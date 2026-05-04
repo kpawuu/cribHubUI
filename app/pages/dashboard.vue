@@ -293,6 +293,41 @@ const dashRoleLabel = computed(() => {
 
 const statsCards = computed(() => {
   const sv = s.value
+  const role = typeof sv.role === 'string' ? sv.role : ''
+
+  if (role === 'agent') {
+    return [
+      {
+        label: 'Assigned properties',
+        value: sv.assignedProperties ?? '—',
+        icon: 'las la-city',
+        iconBg: 'bg-blue-50',
+        iconColor: 'text-blue-600'
+      },
+      {
+        label: 'Units',
+        value: sv.units ?? '—',
+        icon: 'las la-door-open',
+        iconBg: 'bg-emerald-50',
+        iconColor: 'text-emerald-600'
+      },
+      {
+        label: 'Applications',
+        value: sv.rentalApplications ?? '—',
+        icon: 'las la-users',
+        iconBg: 'bg-violet-50',
+        iconColor: 'text-violet-600'
+      },
+      {
+        label: 'Open inquiries',
+        value: sv.openInquiries ?? '—',
+        icon: 'las la-inbox',
+        iconBg: 'bg-amber-50',
+        iconColor: 'text-amber-600'
+      }
+    ]
+  }
+
   return [
     {
       label: sv.assignedProperties != null ? 'Assigned properties' : sv.properties != null ? 'Total properties' : 'Units',
@@ -311,7 +346,7 @@ const statsCards = computed(() => {
     },
     {
       label: sv.openInquiries != null ? 'Open inquiries' : sv.users != null ? 'Users (admin)' : 'Maintenance',
-      value: sv.maintenanceRequests ?? sv.openInquiries ?? sv.users ?? '—',
+      value: sv.openInquiries ?? sv.maintenanceRequests ?? sv.users ?? '—',
       icon: 'las la-clipboard-list', iconBg: 'bg-amber-50', iconColor: 'text-amber-600'
     }
   ]
