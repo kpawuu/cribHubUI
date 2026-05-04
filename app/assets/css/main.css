@@ -1,0 +1,202 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root,
+:host {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-heading: 'Cal Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body,
+  :host {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-optical-sizing: auto;
+    font-feature-settings:
+      'kern' 1,
+      'liga' 1,
+      'calt' 1;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  .font-heading {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: geometricPrecision;
+    font-feature-settings:
+      'kern' 1,
+      'liga' 1,
+      'calt' 1;
+    font-optical-sizing: auto;
+  }
+
+  h1,
+  h2 {
+    letter-spacing: 0.04em;
+  }
+
+  h3,
+  h4 {
+    letter-spacing: 0.02em;
+  }
+
+  h5,
+  h6 {
+    letter-spacing: 0.01em;
+  }
+
+  .font-heading {
+    letter-spacing: 0.02em;
+  }
+}
+
+html,
+body,
+:host {
+  @apply bg-white text-gray-800 font-sans;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.font-heading {
+  font-family: 'Cal Sans', Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.footer-brand-logo {
+  filter: brightness(0) invert(1);
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.property-card {
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease;
+}
+
+.property-card:hover {
+  border-color: #3282b8;
+  box-shadow: none;
+}
+
+.hero-gradient {
+  background:
+    linear-gradient(135deg, rgba(27, 38, 44, 0.85) 0%, rgba(15, 76, 117, 0.75) 100%),
+    url('/images/slider/slide1.jpeg') center/cover no-repeat;
+  background-attachment: fixed;
+}
+
+.search-float {
+  box-shadow: none;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-in-up {
+  animation: slideInUp 0.6s ease-out;
+}
+
+.compact-card {
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease;
+}
+
+.compact-card:hover {
+  border-color: #3282b8;
+  box-shadow: none;
+}
+
+.auth-gradient {
+  background:
+    linear-gradient(135deg, rgba(27, 38, 44, 0.95) 0%, rgba(15, 76, 117, 0.9) 100%),
+    url('/images/slider/slide1.jpeg') center/cover no-repeat;
+  background-attachment: fixed;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.password-strength-bar {
+  height: 4px;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+.otp-input {
+  width: 3.5rem;
+  height: 3.5rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.role-card {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.role-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(50, 130, 184, 0.15);
+}
+
+.role-card.selected {
+  border-color: #0f4c75;
+  background: linear-gradient(135deg, #f0f8ff 0%, #bbe1fa 100%);
+  box-shadow: 0 8px 20px rgba(50, 130, 184, 0.25);
+}
+
+.stat-card {
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+}
+

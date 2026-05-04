@@ -1,0 +1,34 @@
+{
+  "name": "cribhub_ui",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@feathersjs/authentication-client": "^5.0.44",
+    "@feathersjs/feathers": "^5.0.44",
+    "@feathersjs/socketio-client": "^5.0.44",
+    "@fontsource-variable/sora": "^5.2.8",
+    "@nuxtjs/tailwindcss": "^6.14.0",
+    "@pinia/nuxt": "^0.11.3",
+    "@tiptap/extension-link": "^3.22.5",
+    "@tiptap/extension-placeholder": "^3.22.5",
+    "@tiptap/starter-kit": "^3.22.5",
+    "@tiptap/vue-3": "^3.22.5",
+    "flowbite": "^4.0.1",
+    "isomorphic-dompurify": "^3.12.0",
+    "markdown-it": "^14.1.1",
+    "nuxt": "^4.4.2",
+    "nuxt-easy-lightbox": "^1.1.0",
+    "pinia": "^3.0.4",
+    "quill": "^2.0.3",
+    "socket.io-client": "^4.8.3",
+    "vue": "^3.5.33",
+    "vue-router": "^5.0.6"
+  }
+}
