@@ -28,8 +28,8 @@
         <!-- Header -->
         <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
           <div>
-            <h1 class="text-sm font-bold text-gray-900">Tenant preferences</h1>
-            <p class="mt-0.5 text-xs text-gray-500">Help us tailor property recommendations for you.</p>
+            <h1 class="text-sm font-bold text-gray-900">Property manager profile setup</h1>
+            <p class="mt-0.5 text-xs text-gray-500">A few details to complete your verification request.</p>
           </div>
           <NuxtLink to="/onboarding/role" class="flex items-center gap-1 text-xs text-gray-400 transition hover:text-gray-700">
             <i class="las la-angle-left"></i> Back
@@ -46,76 +46,51 @@
 
         <!-- Form -->
         <form class="space-y-4 p-5" @submit.prevent="onSubmit">
-          <!-- Looking for -->
-          <div>
-            <label class="mb-1.5 block text-xs font-semibold text-gray-700">Looking for</label>
-            <div class="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                class="rounded border px-3 py-2 text-sm font-medium transition"
-                :class="lookingFor === 'rent' ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
-                @click="lookingFor = 'rent'"
-              >
-                <i class="las la-key mr-1"></i> Rent
-              </button>
-              <button
-                type="button"
-                class="rounded border px-3 py-2 text-sm font-medium transition"
-                :class="lookingFor === 'buy' ? 'border-primary-500 bg-primary-50 text-primary-700' : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'"
-                @click="lookingFor = 'buy'"
-              >
-                <i class="las la-home mr-1"></i> Buy
-              </button>
-            </div>
-          </div>
-
-          <!-- Budget range -->
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="mb-1 block text-xs font-semibold text-gray-700">Budget min</label>
+              <label class="mb-1 block text-xs font-semibold text-gray-700">Company / portfolio name</label>
               <input
-                v-model.number="budgetMin"
-                type="number"
-                min="0"
-                placeholder="0"
+                v-model="companyName"
+                type="text"
+                placeholder="e.g. Apex Property Management"
                 class="w-full rounded border border-gray-300 px-3 py-2 text-sm transition placeholder:text-gray-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
               />
             </div>
             <div>
-              <label class="mb-1 block text-xs font-semibold text-gray-700">Budget max</label>
+              <label class="mb-1 block text-xs font-semibold text-gray-700">
+                Registration ID <span class="font-normal text-gray-400">(optional)</span>
+              </label>
               <input
-                v-model.number="budgetMax"
-                type="number"
-                min="0"
-                placeholder="5,000"
+                v-model="registrationId"
+                type="text"
+                placeholder="Business registration number"
                 class="w-full rounded border border-gray-300 px-3 py-2 text-sm transition placeholder:text-gray-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
               />
             </div>
           </div>
 
-          <!-- Preferred locations -->
           <div>
-            <label class="mb-1 block text-xs font-semibold text-gray-700">Preferred locations</label>
-            <UiLocationMultiPicker
-              v-model="locationTags"
-              placeholder="Search areas, cities, neighbourhoods…"
-              :max-items="8"
-            />
+            <label class="mb-1 block text-xs font-semibold text-gray-700">
+              About your services <span class="font-normal text-gray-400">(optional)</span>
+            </label>
+            <textarea
+              v-model="about"
+              rows="3"
+              placeholder="Describe the properties you manage and your experience…"
+              class="w-full rounded border border-gray-300 px-3 py-2 text-sm transition placeholder:text-gray-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            ></textarea>
           </div>
 
-          <!-- Bedrooms -->
-          <div>
-            <label class="mb-1 block text-xs font-semibold text-gray-700">Minimum bedrooms</label>
-            <select
-              v-model.number="bedrooms"
-              class="w-full rounded border border-gray-300 px-3 py-2 text-sm transition focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-            >
-              <option :value="0">Any</option>
-              <option :value="1">1+</option>
-              <option :value="2">2+</option>
-              <option :value="3">3+</option>
-              <option :value="4">4+</option>
-            </select>
+          <div class="flex items-start gap-2 rounded border border-gray-100 bg-gray-50 px-3 py-2.5">
+            <input
+              v-model="accepted"
+              type="checkbox"
+              required
+              class="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+            />
+            <label class="text-xs leading-relaxed text-gray-600">
+              I confirm the information provided is accurate and understand it may be reviewed for verification.
+            </label>
           </div>
         </form>
 
@@ -131,7 +106,7 @@
             @click="onSubmit"
           >
             <i v-if="isSubmitting" class="las la-circle-notch la-spin"></i>
-            {{ isSubmitting ? 'Saving…' : 'Continue' }}
+            {{ isSubmitting ? 'Submitting…' : 'Submit' }}
             <i v-if="!isSubmitting" class="las la-arrow-right text-base"></i>
           </button>
         </div>
@@ -146,15 +121,14 @@ import { useAuthStore } from '@@/stores/auth'
 import { consumeOnboardingPostRedirect } from '../../composables/useOnboardingRedirect'
 
 definePageMeta({ middleware: ['auth'], layout: 'auth' })
-useHead({ title: 'Tenant Profile – CribHub' })
+useHead({ title: 'Property Manager Profile – CribHub' })
 
 const auth = useAuthStore()
 
-const lookingFor = ref<'rent' | 'buy'>('rent')
-const budgetMin = ref<number>(0)
-const budgetMax = ref<number>(0)
-const locationTags = ref<string[]>([])
-const bedrooms = ref<number>(0)
+const companyName = ref('')
+const registrationId = ref('')
+const about = ref('')
+const accepted = ref(false)
 
 const error = ref<string | null>(null)
 const success = ref<string | null>(null)
@@ -172,23 +146,26 @@ async function onSubmit() {
     const id = (auth.user as any)?._id?.toString?.() || (auth.user as any)?._id
     if (!id) throw new Error('Missing user id')
 
+    const roleRequestId = sessionStorage.getItem('roleRequestId') || ''
+    if (!roleRequestId) throw new Error('Missing role request id — please go back and select your role again.')
+
     const feathers = useNuxtApp().$feathers as any
     const patched = await feathers.service('users').patch(id, {
-      isOnboarded: true,
       onboarding: {
-        lookingFor: lookingFor.value,
-        budgetMin: budgetMin.value || undefined,
-        budgetMax: budgetMax.value || undefined,
-        locations: locationTags.value,
-        bedrooms: bedrooms.value || undefined,
+        property_manager: {
+          companyName: companyName.value.trim(),
+          registrationId: registrationId.value.trim() || undefined,
+          about: about.value.trim() || undefined,
+        },
       },
+      isOnboarded: true,
     })
 
     auth.user = patched
     localStorage.setItem('user', JSON.stringify(patched))
     await navigateTo(consumeOnboardingPostRedirect('/dashboard'))
   } catch (e: any) {
-    error.value = e?.message || 'Failed to save'
+    error.value = e?.message || 'Failed to submit'
   } finally {
     isSubmitting.value = false
   }

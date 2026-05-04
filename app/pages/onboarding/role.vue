@@ -29,7 +29,11 @@
       <!-- Header -->
       <div class="text-center mb-12 animate-fade-in">
         <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3">Welcome! Choose Your Role</h1>
-        <p class="text-lg text-gray-600 max-w-2xl mx-auto">Tell us how you'll use CribHub. This helps us personalize your experience</p>
+        <p class="text-lg text-gray-600 max-w-2xl mx-auto">
+          Pick how you plan to use CribHub. <span class="font-medium text-gray-800">Tenant</span> lets you browse and rent right away.
+          <span class="font-medium text-gray-800">Landlord</span>, <span class="font-medium text-gray-800">agent</span>, and
+          <span class="font-medium text-gray-800">property manager</span> start a verification request and are enabled after the team approves it.
+        </p>
       </div>
 
       <div v-if="error" class="mb-6 p-4 rounded-lg bg-red-50 text-red-800 border border-red-200">{{ error }}</div>
@@ -154,6 +158,8 @@
 <script setup lang="ts">
 import { useAuthStore } from '@@/stores/auth'
 import { useRoleRequestsStore } from '@@/stores/roleRequests'
+import { normalizeFeathersFind } from '../../../utils/feathersNormalize'
+import { stashOnboardingPostRedirect, consumeOnboardingPostRedirect } from '../../composables/useOnboardingRedirect'
 
 definePageMeta({ middleware: ['auth'] })
 useHead({ title: 'Choose Your Role - CribHub' })
@@ -170,14 +176,10 @@ function select(role: NonNullable<typeof selectedRole.value>) {
   selectedRole.value = role
 }
 
-/** Destination after completing onboarding — honour the `from` param if present */
-function afterOnboardingPath(roleSpecificPath: string) {
+function safeFromQuery(): string | null {
   const from = route.query.from as string | undefined
-  // Only honour `from` if it's a safe internal path
-  if (from && from.startsWith('/') && !from.startsWith('/onboarding') && !from.startsWith('/auth')) {
-    return from
-  }
-  return roleSpecificPath
+  if (from && from.startsWith('/') && !from.startsWith('/onboarding') && !from.startsWith('/auth')) return from
+  return null
 }
 
 async function markOnboarded() {
@@ -187,6 +189,31 @@ async function markOnboarded() {
   const patched = await feathers.service('users').patch(id, { isOnboarded: true })
   auth.user = patched
   localStorage.setItem('user', JSON.stringify(patched))
+  await auth.fetchRoles()
+}
+
+/**
+ * Create a pending role request, or reuse an existing pending one (e.g. legacy signup
+ * that used `requestedRole` before it was removed).
+ */
+async function ensureRoleRequest(userId: string, role: 'landlord' | 'agent' | 'property_manager') {
+  try {
+    return await rrStore.create({ userId, role })
+  } catch (e: any) {
+    const name = e?.data?.name || e?.className || ''
+    const msg = String(e?.message || '')
+    const conflict = name === 'Conflict' || name === 'conflict' || msg.includes('pending')
+    if (!conflict) throw e
+
+    const feathers = useNuxtApp().$feathers as any
+    const res = await feathers.service('role-requests').find({
+      query: { userId, role, status: 'pending', $limit: 1 }
+    })
+    const norm = normalizeFeathersFind(res)
+    const row = norm.data[0]
+    if (!row) throw e
+    return row
+  }
 }
 
 async function continueNext() {
@@ -194,32 +221,41 @@ async function continueNext() {
   error.value = null
   isSubmitting.value = true
   try {
+    stashOnboardingPostRedirect()
     const role = selectedRole.value
 
     if (role === 'tenant') {
-      // Mark onboarded immediately — tenant profile page is optional detail collection
       await markOnboarded()
-      await navigateTo(afterOnboardingPath('/onboarding/tenant'))
+      await navigateTo('/onboarding/tenant')
       return
     }
 
     const userId = (auth.user as any)?._id?.toString?.() || (auth.user as any)?._id
     if (!userId) throw new Error('Missing user id')
 
-    const rr = await rrStore.create({ userId, role })
+    const rr = await ensureRoleRequest(userId, role)
     sessionStorage.setItem('roleRequestId', String(rr?._id || ''))
     sessionStorage.setItem('requestedRole', role)
 
-    // Mark onboarded so the middleware gate is cleared for all roles
     await markOnboarded()
 
-    if (role === 'landlord') await navigateTo(afterOnboardingPath('/onboarding/landlord'))
-    else if (role === 'agent') await navigateTo(afterOnboardingPath('/onboarding/agent'))
-    else await navigateTo(afterOnboardingPath('/dashboard'))
+    if (role === 'landlord') await navigateTo('/onboarding/landlord')
+    else if (role === 'agent') await navigateTo('/onboarding/agent')
+    else await navigateTo('/onboarding/property-manager')
   } catch (e: any) {
     error.value = e?.message || 'Failed to continue'
   } finally {
     isSubmitting.value = false
   }
 }
+
+onMounted(async () => {
+  if (!auth.isReady) await auth.bootstrap()
+  if (auth.isAuthenticated && !auth.roles.length) await auth.fetchRoles()
+
+  if (auth.onboardingComplete()) {
+    const q = safeFromQuery()
+    await navigateTo(q || consumeOnboardingPostRedirect('/dashboard'))
+  }
+})
 </script>

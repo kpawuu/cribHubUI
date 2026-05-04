@@ -6,6 +6,9 @@
       <p class="mt-4 max-w-md text-sm leading-relaxed text-white/90 sm:text-base">
         One profile for browsing, saving homes, applying to units, and managing leases—same design language as the rest of the product.
       </p>
+      <p class="mt-4 max-w-md text-xs leading-relaxed text-white/80 sm:text-sm">
+        New accounts can use the app as a tenant right away. If you want to list or manage properties as a landlord, agent, or property manager, you will choose that after you sign in and submit a short request for review.
+      </p>
       <div class="mt-10 grid max-w-lg grid-cols-3 gap-4 text-center sm:gap-6">
         <div class="rounded bg-white/10 p-3 ring-1 ring-white/15 sm:p-4">
           <div class="font-heading text-2xl font-bold text-white sm:text-3xl">10k+</div>
@@ -24,7 +27,9 @@
 
     <div class="space-y-1">
       <h1 class="font-heading text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">Create account</h1>
-      <p class="text-sm text-gray-600">Start with email—add roles and details anytime.</p>
+      <p class="text-sm text-gray-600">
+        Start with email. Everyone gets tenant access first; you can request landlord, agent, or property manager from onboarding after you verify and sign in (those roles are activated after approval).
+      </p>
     </div>
 
     <form class="mt-5 space-y-4" @submit.prevent="onSubmit">
@@ -116,31 +121,6 @@
         </div>
       </div>
 
-      <div>
-        <label for="requestedRole" class="mb-2 block text-sm font-medium text-gray-900">
-          I am a… <span class="font-normal text-gray-400">(optional)</span>
-        </label>
-        <div class="relative">
-          <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-            <i class="las la-id-badge text-lg leading-none"></i>
-          </span>
-          <select
-            id="requestedRole"
-            v-model="requestedRole"
-            class="block w-full cursor-pointer appearance-none rounded border border-gray-300 bg-gray-50 py-2.5 pl-10 pr-10 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500"
-          >
-            <option value="">Browsing for now</option>
-            <option value="tenant">Tenant</option>
-            <option value="landlord">Landlord</option>
-            <option value="agent">Agent</option>
-            <option value="property_manager">Property manager</option>
-          </select>
-          <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400">
-            <i class="las la-angle-down text-lg"></i>
-          </span>
-        </div>
-      </div>
-
       <div class="flex gap-2 rounded border border-gray-100 bg-gray-50/80 p-3">
         <input
           id="terms"
@@ -212,7 +192,6 @@ const fullName = ref('')
 const email = ref('')
 const phone = ref('')
 const password = ref('')
-const requestedRole = ref<'' | 'tenant' | 'landlord' | 'agent' | 'property_manager'>('')
 const acceptedTerms = ref(false)
 const showPassword = ref(false)
 
@@ -261,8 +240,7 @@ async function onSubmit() {
       fullName: fullName.value.trim(),
       email: email.value.trim(),
       phone: phone.value.trim() || undefined,
-      password: password.value,
-      requestedRole: requestedRole.value || undefined
+      password: password.value
     })
 
     await navigateTo({ path: '/auth/verify-email', query: { email: email.value.trim() } })

@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { clearAuthRelatedSessionStorage } from '../app/composables/useOnboardingRedirect'
 
 type AuthResult = {
   accessToken?: string
@@ -59,6 +60,17 @@ export const useAuthStore = defineStore('auth', () => {
 
   function hasRole(...allowed: string[]) {
     return allowed.some((r) => roles.value.includes(r))
+  }
+
+  /**
+   * True when the auth middleware should not force `/onboarding/role`.
+   * - User finished onboarding (`isOnboarded`), or
+   * - User already holds a non-tenant operational role (granted after admin approval, etc.).
+   * Everyone still has `tenant` from signup; landlord/agent/pm/admin bypass the gate.
+   */
+  function onboardingComplete() {
+    if (user.value?.isOnboarded) return true
+    return hasRole('landlord', 'agent', 'property_manager', 'admin')
   }
 
   async function bootstrap() {
@@ -126,6 +138,7 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('refreshToken')
     localStorage.removeItem('user')
     roles.value = []
+    clearAuthRelatedSessionStorage()
   }
 
   return {
@@ -136,6 +149,7 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     roles,
     hasRole,
+    onboardingComplete,
     fetchRoles,
     bootstrap,
     login,

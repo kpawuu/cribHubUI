@@ -121,6 +121,7 @@
 
 <script setup lang="ts">
 import { useAuthStore } from '@@/stores/auth'
+import { consumeOnboardingPostRedirect } from '../../composables/useOnboardingRedirect'
 
 definePageMeta({ middleware: ['auth'], layout: 'auth' })
 useHead({ title: 'Agent Profile – CribHub' })
@@ -137,7 +138,7 @@ const success = ref<string | null>(null)
 const isSubmitting = ref(false)
 
 async function skipForNow() {
-  await navigateTo('/dashboard')
+  await navigateTo(consumeOnboardingPostRedirect('/dashboard'))
 }
 
 async function onSubmit() {
@@ -165,7 +166,7 @@ async function onSubmit() {
 
     auth.user = patched
     localStorage.setItem('user', JSON.stringify(patched))
-    await navigateTo('/dashboard')
+    await navigateTo(consumeOnboardingPostRedirect('/dashboard'))
   } catch (e: any) {
     error.value = e?.message || 'Failed to submit'
   } finally {

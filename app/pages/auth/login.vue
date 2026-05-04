@@ -159,9 +159,8 @@ async function onSubmit() {
   isSubmitting.value = true
   try {
     await auth.login(email.value.trim(), password.value)
-    const u: any = auth.user
-    if (u && !u.isOnboarded) {
-      // New / unfinished user — force onboarding; pass intended destination as `from`
+    if (!auth.onboardingComplete()) {
+      // Tenant-only / not finished — force role onboarding; pass intended destination as `from`
       const from = route.query.redirect as string | undefined
       await navigateTo({ path: '/onboarding/role', query: from ? { from } : undefined })
     } else {
