@@ -1,112 +1,173 @@
 <template>
   <div class="bg-gray-50">
-    <!-- Search Bar -->
+    <!-- Search / Filter bar -->
     <!-- z-30: below site nav (z-50) so header dropdowns are not covered on /listings -->
     <div class="sticky top-0 z-30 border-b border-gray-200 bg-white">
-      <div class="max-w-7xl mx-auto px-4 py-3">
-        <div class="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-12 gap-2">
-          <!-- Location Search -->
-          <div class="md:col-span-3 lg:col-span-4">
-            <div class="relative">
-              <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                </svg>
+      <div class="max-w-7xl mx-auto px-4">
+
+        <!-- ── Mobile compact bar (visible on < md) ─────────────────── -->
+        <div class="flex items-center gap-2 py-2.5 md:hidden">
+          <!-- Location input stays always visible on mobile -->
+          <div class="relative min-w-0 flex-1">
+            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+            </div>
+            <input
+              v-model="qLocation"
+              type="text"
+              placeholder="Location…"
+              class="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition"
+              @keydown.enter="applyFilters"
+            />
+          </div>
+
+          <!-- Filters toggle button -->
+          <button
+            type="button"
+            class="relative shrink-0 inline-flex items-center gap-1.5 rounded border px-3 py-2.5 text-sm font-medium transition"
+            :class="mobileFiltersOpen
+              ? 'border-primary-500 bg-primary-50 text-primary-700'
+              : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'"
+            @click="mobileFiltersOpen = !mobileFiltersOpen"
+          >
+            <i class="las la-sliders-h text-base leading-none"></i>
+            <span>Filters</span>
+            <!-- Active-filter dot -->
+            <span
+              v-if="activeFilterCount > 0"
+              class="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-600 px-1 text-[9px] font-bold text-white"
+            >{{ activeFilterCount }}</span>
+          </button>
+
+          <!-- Search button -->
+          <button
+            type="button"
+            class="shrink-0 rounded bg-primary-600 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-700 disabled:opacity-60"
+            :disabled="properties.isLoading"
+            @click="applyFilters"
+          >
+            <i class="las la-search text-base leading-none"></i>
+          </button>
+        </div>
+
+        <!-- ── Expandable filter panel (mobile: toggled; md+: always shown) ── -->
+        <Transition
+          enter-active-class="transition-all duration-200 ease-out overflow-hidden"
+          enter-from-class="max-h-0 opacity-0"
+          enter-to-class="max-h-[500px] opacity-100"
+          leave-active-class="transition-all duration-150 ease-in overflow-hidden"
+          leave-from-class="max-h-[500px] opacity-100"
+          leave-to-class="max-h-0 opacity-0"
+        >
+          <div v-show="mobileFiltersOpen || !isMobile" class="pb-3 md:pt-3">
+            <div class="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-12 gap-2">
+              <!-- Location (hidden on mobile — shown in compact bar above) -->
+              <div class="hidden md:block md:col-span-3 lg:col-span-4">
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                  </div>
+                  <input
+                    v-model="qLocation"
+                    type="text"
+                    placeholder="City, community or building"
+                    class="w-full pl-10 pr-3 py-2.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition"
+                  />
+                </div>
               </div>
-              <input
-                v-model="qLocation"
-                type="text"
-                placeholder="City, community or building"
-                class="w-full pl-10 pr-3 py-2.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition"
-              />
+
+              <!-- Type -->
+              <div class="md:col-span-1 lg:col-span-1">
+                <select
+                  v-model="qType"
+                  class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition"
+                >
+                  <option value="buy">Buy</option>
+                  <option value="rent">Rent</option>
+                  <option value="commercial">Commercial</option>
+                  <option value="new">New</option>
+                </select>
+              </div>
+
+              <!-- Property Type -->
+              <div class="md:col-span-1 lg:col-span-2">
+                <select
+                  v-model="qPropertyType"
+                  class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition"
+                >
+                  <option value="">Property Type</option>
+                  <option value="Apartment">Apartment</option>
+                  <option value="Villa">Villa</option>
+                  <option value="Townhouse">Townhouse</option>
+                  <option value="Penthouse">Penthouse</option>
+                  <option value="Land">Land</option>
+                  <option value="Duplex">Duplex</option>
+                  <option value="Commercial">Commercial</option>
+                </select>
+              </div>
+
+              <!-- Beds & Baths -->
+              <div class="md:col-span-1 lg:col-span-2">
+                <select
+                  v-model="qBedsBaths"
+                  class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition"
+                >
+                  <option value="">Beds and Baths</option>
+                  <option value="1">1+</option>
+                  <option value="2">2+</option>
+                  <option value="3">3+</option>
+                  <option value="4">4+</option>
+                </select>
+              </div>
+
+              <!-- Price -->
+              <div class="md:col-span-1 lg:col-span-2">
+                <select
+                  v-model="qPrice"
+                  class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition"
+                >
+                  <option value="">Price</option>
+                  <option value="500">$500+</option>
+                  <option value="1000">$1,000+</option>
+                  <option value="2000">$2,000+</option>
+                  <option value="5000">$5,000+</option>
+                </select>
+              </div>
+
+              <!-- Search Button (md+) / Apply on mobile -->
+              <div class="md:col-span-1 lg:col-span-1">
+                <button
+                  type="button"
+                  class="w-full px-4 py-2.5 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded transition disabled:opacity-60"
+                  :disabled="properties.isLoading"
+                  @click="onApplyFilters"
+                >
+                  <span class="md:hidden">Apply filters</span>
+                  <i class="las la-search hidden md:inline"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Checkbox filters -->
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3">
+              <label class="flex items-center space-x-2 cursor-pointer">
+                <input v-model="qVerified" type="checkbox" class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500" />
+                <span class="text-sm text-gray-700"><i class="las la-shield-alt"></i> Verified</span>
+              </label>
+              <label class="flex items-center space-x-2 cursor-pointer">
+                <input v-model="qSuperAgent" type="checkbox" class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500" />
+                <span class="text-sm text-gray-700"><i class="las la-user-circle"></i> Super Agent</span>
+              </label>
+              <a href="#" class="text-sm text-primary-600 hover:text-primary-700">
+                <i class="las la-question-circle"></i> What is this?
+              </a>
             </div>
           </div>
-
-          <!-- Type -->
-          <div class="md:col-span-1 lg:col-span-1">
-            <select
-              v-model="qType"
-              class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition"
-            >
-              <option value="buy">Buy</option>
-              <option value="rent">Rent</option>
-              <option value="commercial">Commercial</option>
-              <option value="new">New</option>
-            </select>
-          </div>
-
-          <!-- Property Type -->
-          <div class="md:col-span-1 lg:col-span-2">
-            <select
-              v-model="qPropertyType"
-              class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition"
-            >
-              <option value="">Property Type</option>
-              <option value="Apartment">Apartment</option>
-              <option value="Villa">Villa</option>
-              <option value="Townhouse">Townhouse</option>
-              <option value="Penthouse">Penthouse</option>
-              <option value="Land">Land</option>
-              <option value="Duplex">Duplex</option>
-              <option value="Commercial">Commercial</option>
-            </select>
-          </div>
-
-          <!-- Beds & Baths -->
-          <div class="md:col-span-1 lg:col-span-2">
-            <select
-              v-model="qBedsBaths"
-              class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition"
-            >
-              <option value="">Beds and Baths</option>
-              <option value="1">1+</option>
-              <option value="2">2+</option>
-              <option value="3">3+</option>
-              <option value="4">4+</option>
-            </select>
-          </div>
-
-          <!-- Price -->
-          <div class="md:col-span-1 lg:col-span-2">
-            <select
-              v-model="qPrice"
-              class="w-full px-3 py-2.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition"
-            >
-              <option value="">Price</option>
-              <option value="500">\$500+</option>
-              <option value="1000">\$1,000+</option>
-              <option value="2000">\$2,000+</option>
-              <option value="5000">\$5,000+</option>
-            </select>
-          </div>
-
-          <!-- Search Button -->
-          <div class="md:col-span-1 lg:col-span-1">
-            <button
-              type="button"
-              class="w-full px-4 py-2.5 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded transition"
-              :disabled="properties.isLoading"
-              @click="applyFilters"
-            >
-              <i class="las la-search"></i>
-            </button>
-          </div>
-        </div>
-
-        <!-- Filters -->
-        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3">
-          <label class="flex items-center space-x-2 cursor-pointer">
-            <input v-model="qVerified" type="checkbox" class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500" />
-            <span class="text-sm text-gray-700"><i class="las la-shield-alt"></i> Verified</span>
-          </label>
-          <label class="flex items-center space-x-2 cursor-pointer">
-            <input v-model="qSuperAgent" type="checkbox" class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500" />
-            <span class="text-sm text-gray-700"><i class="las la-user-circle"></i> Super Agent</span>
-          </label>
-          <a href="#" class="text-sm text-primary-600 hover:text-primary-700">
-            <i class="las la-question-circle"></i> What is this?
-          </a>
-        </div>
+        </Transition>
       </div>
     </div>
 
@@ -391,6 +452,36 @@ const qPrice = ref(String(route.query.price || ''))
 const qVerified = ref(String(route.query.verified || '') === 'true')
 const qSuperAgent = ref(route.query.superAgent === 'true')
 const qSort = ref(String(route.query.sort || 'featured'))
+
+// Mobile filter panel toggle
+const mobileFiltersOpen = ref(false)
+
+// True when viewport is below md breakpoint (768px)
+const isMobile = ref(false)
+function checkMobile() { isMobile.value = window.innerWidth < 768 }
+onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+})
+onUnmounted(() => window.removeEventListener('resize', checkMobile))
+
+// Count active filters (excluding location & sort) for the badge
+const activeFilterCount = computed(() => {
+  let n = 0
+  if (qType.value && qType.value !== 'rent') n++
+  if (qPropertyType.value) n++
+  if (qBedsBaths.value) n++
+  if (qPrice.value) n++
+  if (qVerified.value) n++
+  if (qSuperAgent.value) n++
+  return n
+})
+
+// On mobile: apply filters and close the panel
+async function onApplyFilters() {
+  mobileFiltersOpen.value = false
+  await applyFilters()
+}
 
 const scrollSentinel = ref<HTMLElement | null>(null)
 
