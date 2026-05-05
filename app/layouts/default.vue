@@ -159,64 +159,97 @@
             </ClientOnly>
           </div>
 
-          <!-- Mobile menu button -->
-          <button
-            data-collapse-toggle="mobile-menu"
-            type="button"
-            class="lg:hidden p-2 text-gray-700 rounded hover:bg-gray-100"
-            aria-controls="mobile-menu"
-            aria-expanded="false"
-          >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-            </svg>
-          </button>
+          <!-- Mobile actions: search shortcut + hamburger -->
+          <div class="flex items-center gap-1 lg:hidden">
+            <ClientOnly>
+              <NuxtLink
+                :to="auth.isAuthenticated ? '/notifications' : '/auth/login'"
+                class="relative p-2 text-gray-700 hover:bg-gray-100 rounded transition"
+                aria-label="Notifications"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                </svg>
+                <span v-if="auth.isAuthenticated && notifications.unreadTotal > 0" class="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[9px] font-bold text-white">
+                  {{ notifications.unreadTotal > 9 ? '9+' : notifications.unreadTotal }}
+                </span>
+              </NuxtLink>
+            </ClientOnly>
+            <button
+              type="button"
+              class="p-2 text-gray-700 rounded hover:bg-gray-100 transition"
+              :aria-expanded="mobileMenuOpen"
+              aria-controls="mobile-menu"
+              @click="mobileMenuOpen = !mobileMenuOpen"
+            >
+              <svg v-if="!mobileMenuOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+              </svg>
+              <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
         </div>
 
         <!-- Mobile Menu -->
-        <div id="mobile-menu" class="hidden lg:hidden border-t border-gray-200">
+        <Transition
+          enter-active-class="transition duration-200 ease-out"
+          enter-from-class="-translate-y-2 opacity-0"
+          enter-to-class="translate-y-0 opacity-100"
+          leave-active-class="transition duration-150 ease-in"
+          leave-from-class="translate-y-0 opacity-100"
+          leave-to-class="-translate-y-2 opacity-0"
+        >
+        <div v-show="mobileMenuOpen" id="mobile-menu" class="lg:hidden border-t border-gray-200">
           <div class="px-2 pt-2 pb-3 space-y-1">
             <NuxtLink
               :to="{ path: '/listings', query: { type: 'buy' } }"
-              class="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded"
+              class="block px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded active:bg-gray-100"
+              @click="mobileMenuOpen = false"
               >Buy</NuxtLink
             >
             <NuxtLink
               :to="{ path: '/listings', query: { type: 'rent' } }"
-              class="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded"
+              class="block px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded active:bg-gray-100"
+              @click="mobileMenuOpen = false"
               >Rent</NuxtLink
             >
             <NuxtLink
               :to="{ path: '/listings', query: { type: 'commercial' } }"
-              class="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded"
+              class="block px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded active:bg-gray-100"
+              @click="mobileMenuOpen = false"
               >Commercial</NuxtLink
             >
             <NuxtLink
               :to="{ path: '/listings', query: { type: 'new' } }"
-              class="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded"
+              class="block px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded active:bg-gray-100"
+              @click="mobileMenuOpen = false"
               >New Projects</NuxtLink
             >
-            <NuxtLink to="/agents" class="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded">Find Agent</NuxtLink>
+            <NuxtLink to="/agents" class="block px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded active:bg-gray-100" @click="mobileMenuOpen = false">Find Agent</NuxtLink>
             <p class="px-3 pt-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Property price</p>
-            <NuxtLink to="/tools/price-calculator" class="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded">Price calculator</NuxtLink>
-            <NuxtLink to="/tools/market-trends" class="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded">Market trends</NuxtLink>
-            <NuxtLink to="/tools/valuation" class="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded">Valuation</NuxtLink>
+            <NuxtLink to="/tools/price-calculator" class="block px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded active:bg-gray-100" @click="mobileMenuOpen = false">Price calculator</NuxtLink>
+            <NuxtLink to="/tools/market-trends" class="block px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded active:bg-gray-100" @click="mobileMenuOpen = false">Market trends</NuxtLink>
+            <NuxtLink to="/tools/valuation" class="block px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded active:bg-gray-100" @click="mobileMenuOpen = false">Valuation</NuxtLink>
             <p class="px-3 pt-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Explore</p>
-            <NuxtLink to="/explore/neighborhoods" class="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded">Neighborhoods</NuxtLink>
-            <NuxtLink to="/explore/virtual-tours" class="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded">Virtual tours</NuxtLink>
-            <NuxtLink to="/blog" class="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded">Blog</NuxtLink>
+            <NuxtLink to="/explore/neighborhoods" class="block px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded active:bg-gray-100" @click="mobileMenuOpen = false">Neighborhoods</NuxtLink>
+            <NuxtLink to="/explore/virtual-tours" class="block px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded active:bg-gray-100" @click="mobileMenuOpen = false">Virtual tours</NuxtLink>
+            <NuxtLink to="/blog" class="block px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded active:bg-gray-100" @click="mobileMenuOpen = false">Blog</NuxtLink>
             <div class="pt-3 border-t border-gray-200 mt-3 space-y-2">
               <ClientOnly>
                 <template v-if="!auth.isAuthenticated">
                   <NuxtLink
                     to="/auth/signup"
                     class="block w-full px-3 py-2.5 text-sm font-semibold text-primary-600 border border-primary-600 hover:bg-primary-50 rounded transition text-center"
+                    @click="mobileMenuOpen = false"
                   >
                     Sign Up
                   </NuxtLink>
                   <NuxtLink
                     to="/auth/login"
                     class="block w-full px-3 py-2.5 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded transition text-center"
+                    @click="mobileMenuOpen = false"
                   >
                     Login
                   </NuxtLink>
@@ -225,6 +258,7 @@
                   <NuxtLink
                     to="/notifications"
                     class="flex w-full items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded transition"
+                    @click="mobileMenuOpen = false"
                   >
                     <span>Notifications</span>
                     <span
@@ -237,6 +271,7 @@
                   <NuxtLink
                     to="/dashboard"
                     class="block w-full px-3 py-2.5 text-sm font-semibold text-primary-600 border border-primary-600 hover:bg-primary-50 rounded transition text-center"
+                    @click="mobileMenuOpen = false"
                   >
                     Dashboard
                   </NuxtLink>
@@ -244,6 +279,7 @@
                     v-if="auth.hasRole('landlord', 'admin')"
                     to="/landlord/properties"
                     class="block w-full px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded transition text-center"
+                    @click="mobileMenuOpen = false"
                   >
                     Landlord hub
                   </NuxtLink>
@@ -251,6 +287,7 @@
                     v-if="auth.hasRole('landlord', 'admin')"
                     to="/verification/role-requests"
                     class="block w-full px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded transition text-center"
+                    @click="mobileMenuOpen = false"
                   >
                     Role requests
                   </NuxtLink>
@@ -264,13 +301,14 @@
                 </template>
 
                 <template #fallback>
-                  <NuxtLink to="/auth/signup" class="block w-full px-3 py-2.5 text-sm font-semibold text-primary-600 border border-primary-600 hover:bg-primary-50 rounded transition text-center">Sign Up</NuxtLink>
-                  <NuxtLink to="/auth/login" class="block w-full px-3 py-2.5 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded transition text-center">Login</NuxtLink>
+                  <NuxtLink to="/auth/signup" class="block w-full px-3 py-2.5 text-sm font-semibold text-primary-600 border border-primary-600 hover:bg-primary-50 rounded transition text-center" @click="mobileMenuOpen = false">Sign Up</NuxtLink>
+                  <NuxtLink to="/auth/login" class="block w-full px-3 py-2.5 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded transition text-center" @click="mobileMenuOpen = false">Login</NuxtLink>
                 </template>
               </ClientOnly>
             </div>
           </div>
         </div>
+        </Transition>
       </div>
     </nav>
 
@@ -372,9 +410,14 @@
 import { useAuthStore } from '@@/stores/auth'
 import { useUserNotificationsStore } from '@@/stores/userNotifications'
 
+const route = useRoute()
 const pinia = usePinia()
 const auth = useAuthStore(pinia)
 const notifications = useUserNotificationsStore()
+const mobileMenuOpen = ref(false)
+
+// Close menu on route change
+watch(() => route.fullPath, () => { mobileMenuOpen.value = false })
 
 async function refreshNavNotifications() {
   if (!auth.isAuthenticated) return
@@ -399,6 +442,7 @@ onMounted(async () => {
 })
 
 async function onLogout() {
+  mobileMenuOpen.value = false
   await auth.logout()
   await navigateTo('/')
 }

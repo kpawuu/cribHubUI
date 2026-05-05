@@ -72,6 +72,52 @@ body,
 :host {
   @apply bg-white text-gray-800 font-sans;
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  /* Prevent horizontal overflow on every viewport */
+  overflow-x: hidden;
+}
+
+html {
+  /* Smooth anchor scrolling */
+  scroll-behavior: smooth;
+}
+
+/* Ensure images never break layout on mobile */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Comfortable touch targets (min 44 × 44 px per Apple HIG / WCAG 2.5.5) */
+@media (max-width: 1024px) {
+  button,
+  a,
+  [role='button'] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* But keep inline/icon-only elements smaller */
+  button.icon-sm,
+  a.icon-sm {
+    min-height: 36px;
+    min-width: 36px;
+  }
+}
+
+/* Focus ring: visible but clean */
+:focus-visible {
+  outline: 2px solid theme('colors.primary.500');
+  outline-offset: 2px;
+}
+
+/* Horizontal-scroll containers (tabs, chip rows) */
+.scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.scroll-x::-webkit-scrollbar {
+  display: none;
 }
 
 h1,

@@ -40,13 +40,12 @@
             </span>
           </NuxtLink>
 
-          <div class="relative ml-1">
+          <div ref="userDropdownRef" class="relative ml-1">
             <button
-              id="account-user-menu-btn"
               type="button"
-              data-dropdown-toggle="account-user-dropdown"
-              data-dropdown-placement="bottom-end"
               class="flex items-center gap-2 rounded py-1.5 pl-1 pr-2 hover:bg-gray-100"
+              :aria-expanded="userDropdownOpen"
+              @click="userDropdownOpen = !userDropdownOpen"
             >
               <div class="flex h-8 w-8 items-center justify-center rounded bg-primary-600 text-xs font-bold text-white">
                 {{ userInitials }}
@@ -54,12 +53,20 @@
               <span class="hidden max-w-[8rem] truncate text-sm font-medium text-gray-800 sm:block">
                 {{ auth.user?.fullName || 'Account' }}
               </span>
-              <i class="las la-angle-down hidden text-sm text-gray-500 sm:inline"></i>
+              <i class="las la-angle-down hidden text-sm text-gray-500 sm:inline transition-transform duration-150" :class="userDropdownOpen ? 'rotate-180' : ''"></i>
             </button>
 
+            <Transition
+              enter-active-class="transition duration-150 ease-out"
+              enter-from-class="scale-95 opacity-0"
+              enter-to-class="scale-100 opacity-100"
+              leave-active-class="transition duration-100 ease-in"
+              leave-from-class="scale-100 opacity-100"
+              leave-to-class="scale-95 opacity-0"
+            >
             <div
-              id="account-user-dropdown"
-              class="z-50 hidden w-56 divide-y divide-gray-100 rounded border border-gray-200 bg-white shadow-lg"
+              v-show="userDropdownOpen"
+              class="absolute right-0 top-full z-50 mt-1 w-56 origin-top-right divide-y divide-gray-100 rounded border border-gray-200 bg-white shadow-lg"
             >
               <div class="px-4 py-3">
                 <p class="truncate text-sm font-semibold text-gray-900">{{ auth.user?.fullName || 'Signed in' }}</p>
@@ -73,20 +80,21 @@
                 </div>
               </div>
               <ul class="py-1 text-sm text-gray-700">
-                <li><NuxtLink to="/profile" class="block px-4 py-2 hover:bg-gray-50"><i class="las la-user-circle mr-2 text-base"></i>Profile & settings</NuxtLink></li>
-                <li><NuxtLink to="/favorites" class="block px-4 py-2 hover:bg-gray-50"><i class="las la-heart mr-2 text-base"></i>Saved properties</NuxtLink></li>
-                <li><NuxtLink to="/" class="block px-4 py-2 hover:bg-gray-50"><i class="las la-home mr-2 text-base"></i>Back to site</NuxtLink></li>
+                <li><NuxtLink to="/profile" class="block px-4 py-2.5 hover:bg-gray-50" @click="userDropdownOpen = false"><i class="las la-user-circle mr-2 text-base"></i>Profile & settings</NuxtLink></li>
+                <li><NuxtLink to="/favorites" class="block px-4 py-2.5 hover:bg-gray-50" @click="userDropdownOpen = false"><i class="las la-heart mr-2 text-base"></i>Saved properties</NuxtLink></li>
+                <li><NuxtLink to="/" class="block px-4 py-2.5 hover:bg-gray-50" @click="userDropdownOpen = false"><i class="las la-home mr-2 text-base"></i>Back to site</NuxtLink></li>
               </ul>
               <div class="py-1">
                 <button
                   type="button"
-                  class="flex w-full items-center px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                  class="flex w-full items-center px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50"
                   @click="logout"
                 >
                   <i class="las la-sign-out-alt mr-2 text-base"></i>Sign out
                 </button>
               </div>
             </div>
+            </Transition>
           </div>
         </div>
       </div>
@@ -255,6 +263,21 @@ const auth = useAuthStore()
 const notifications = useUserNotificationsStore()
 const inq = useInquiriesStore()
 const mobileSidebarOpen = ref(false)
+const userDropdownOpen = ref(false)
+const userDropdownRef = ref<HTMLElement | null>(null)
+
+// Close dropdown on route change
+watch(() => route.fullPath, () => { userDropdownOpen.value = false })
+
+// Close dropdown when clicking outside
+function handleOutsideClick(e: MouseEvent) {
+  if (userDropdownRef.value && !userDropdownRef.value.contains(e.target as Node)) {
+    userDropdownOpen.value = false
+  }
+}
+
+onMounted(() => { document.addEventListener('click', handleOutsideClick, true) })
+onUnmounted(() => { document.removeEventListener('click', handleOutsideClick, true) })
 
 // Unread messages badge: new inquiries for landlord/agent/PM, or new replies for tenant
 const unreadMessages = computed(() => {

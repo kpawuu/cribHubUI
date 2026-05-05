@@ -71,7 +71,7 @@
     </div>
 
     <!-- Tab nav -->
-    <div class="mb-4 flex rounded border border-gray-200 bg-white p-0.5 text-xs font-medium w-fit">
+    <div class="mb-4 flex rounded border border-gray-200 bg-white p-0.5 text-xs font-medium w-full sm:w-fit overflow-x-auto">
       <button
         v-for="tab in tabs"
         :key="tab.key"

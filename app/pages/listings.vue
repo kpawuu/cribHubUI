@@ -94,7 +94,7 @@
         </div>
 
         <!-- Filters -->
-        <div class="flex items-center space-x-4 mt-3">
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3">
           <label class="flex items-center space-x-2 cursor-pointer">
             <input v-model="qVerified" type="checkbox" class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500" />
             <span class="text-sm text-gray-700"><i class="las la-shield-alt"></i> Verified</span>
@@ -120,26 +120,23 @@
             <span class="text-gray-600">{{ resultsLabel }}</span>
             <span v-if="qType === 'new'" class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded">New builds</span>
           </div>
-          <div class="flex items-center space-x-3">
-            <button class="px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50 transition" type="button">
-              <i class="las la-map-marker-alt"></i> Map View
+          <div class="flex flex-wrap items-center gap-2">
+            <button class="px-3 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50 transition inline-flex items-center gap-1" type="button">
+              <i class="las la-map-marker-alt"></i><span class="hidden sm:inline"> Map View</span>
             </button>
-            <button class="px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50 transition" type="button">
-              <i class="las la-star"></i> Save Search
+            <button class="px-3 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50 transition inline-flex items-center gap-1" type="button">
+              <i class="las la-star"></i><span class="hidden sm:inline"> Save</span>
             </button>
-            <div class="flex items-center space-x-2">
-              <span class="text-sm text-gray-600">Sort By:</span>
-              <select
-                v-model="qSort"
-                class="px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
-                @change="applyFilters"
-              >
-                <option value="featured">Featured</option>
-                <option value="newest">Newest</option>
-                <option value="priceAsc">Price: Low to High</option>
-                <option value="priceDesc">Price: High to Low</option>
-              </select>
-            </div>
+            <select
+              v-model="qSort"
+              class="px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+              @change="applyFilters"
+            >
+              <option value="featured">Featured</option>
+              <option value="newest">Newest</option>
+              <option value="priceAsc">Price ↑</option>
+              <option value="priceDesc">Price ↓</option>
+            </select>
           </div>
         </div>
       </div>

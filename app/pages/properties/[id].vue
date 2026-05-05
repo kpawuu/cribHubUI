@@ -3,16 +3,16 @@
     <!-- Breadcrumb -->
     <div class="bg-white border-b border-gray-200">
       <div class="max-w-7xl mx-auto px-4 py-3">
-        <div class="flex items-center justify-between text-sm">
-          <NuxtLink to="/listings" class="text-gray-600 hover:text-primary-600 flex items-center">
-            <i class="las la-angle-left mr-1"></i> Back to search
+        <div class="flex items-center justify-between gap-2 text-sm">
+          <NuxtLink to="/listings" class="shrink-0 text-gray-600 hover:text-primary-600 flex items-center">
+            <i class="las la-angle-left mr-1"></i> Back
           </NuxtLink>
-          <div class="flex items-center space-x-2 text-gray-500">
-            <a href="#" class="hover:text-primary-600">{{ property?.country || 'Greater Accra' }}</a>
-            <i class="las la-angle-right"></i>
-            <a href="#" class="hover:text-primary-600">{{ property?.city || 'Tema' }}</a>
-            <i class="las la-angle-right"></i>
-            <span class="text-gray-900">{{ property?.address || 'Spintex' }}</span>
+          <div class="flex items-center gap-1 text-gray-500 overflow-hidden min-w-0">
+            <a href="#" class="hidden sm:inline truncate hover:text-primary-600">{{ property?.country || 'Greater Accra' }}</a>
+            <i class="las la-angle-right hidden sm:inline text-gray-400"></i>
+            <a href="#" class="hidden xs:inline truncate hover:text-primary-600">{{ property?.city || 'Tema' }}</a>
+            <i class="las la-angle-right hidden xs:inline text-gray-400"></i>
+            <span class="truncate text-gray-900 font-medium">{{ property?.address || 'Spintex' }}</span>
           </div>
         </div>
       </div>
@@ -125,10 +125,11 @@
       </div>
 
       <!-- 5 images on page: hero + four tiles (more photos only in lightbox) -->
+      <!-- On mobile: show only hero + 1 tile (2-col); on sm+ show full 4-col grid -->
       <div v-else class="w-full">
-        <div class="grid grid-cols-4 gap-2 h-[min(55vh,420px)] min-h-[280px] sm:min-h-[360px]">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 h-auto sm:h-[min(55vh,420px)] sm:min-h-[360px]">
           <div
-            class="col-span-2 row-span-2 relative rounded overflow-hidden bg-gray-200 min-h-[200px] cursor-pointer"
+            class="col-span-2 row-span-2 relative rounded overflow-hidden bg-gray-200 min-h-[200px] sm:min-h-0 cursor-pointer"
             role="button"
             tabindex="0"
             @click="openPhotoLightbox(0)"
@@ -147,6 +148,7 @@
             v-for="thumbIdx in 4"
             :key="'th-' + thumbIdx"
             class="rounded overflow-hidden bg-gray-200 min-h-0 cursor-pointer"
+            :class="thumbIdx > 1 ? 'hidden sm:block' : ''"
             role="button"
             tabindex="0"
             @click="openPhotoLightbox(thumbIdx)"
