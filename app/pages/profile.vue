@@ -3,26 +3,47 @@
 
     <!-- Header with avatar -->
     <div class="mb-5 flex items-center gap-4">
-      <div class="relative">
-        <div class="h-14 w-14 rounded overflow-hidden border-2 border-gray-200 bg-gray-100 flex items-center justify-center">
+      <div class="relative group">
+        <div class="h-16 w-16 rounded-full overflow-hidden border-2 border-gray-200 bg-gray-100 flex items-center justify-center">
           <img
-            v-if="avatarPreview"
-            :src="avatarPreview"
-            alt="Avatar"
+            v-if="avatarSrc"
+            :src="avatarSrc"
+            alt="Profile photo"
             class="h-full w-full object-cover"
           />
           <span v-else class="text-xl font-bold text-gray-400">{{ initials }}</span>
         </div>
+
+        <!-- Upload overlay shown on hover -->
         <label
-          class="absolute -bottom-1 -right-1 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full bg-primary-600 text-white shadow-sm transition hover:bg-primary-700"
-          title="Change photo"
+          class="absolute inset-0 flex cursor-pointer flex-col items-center justify-center rounded-full bg-black/0 transition group-hover:bg-black/40"
+          title="Change profile photo"
         >
-          <i class="las la-camera text-[10px]"></i>
-          <input type="file" class="hidden" accept="image/*" @change="onAvatarChange" />
+          <i class="las la-camera text-white opacity-0 text-lg transition group-hover:opacity-100"></i>
+          <input
+            ref="avatarInput"
+            type="file"
+            class="hidden"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            @change="onAvatarChange"
+          />
         </label>
+
+        <!-- Camera badge (always visible) -->
+        <button
+          type="button"
+          class="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary-600 text-white shadow-sm transition hover:bg-primary-700 ring-2 ring-white"
+          title="Change profile photo"
+          :disabled="avatarUploading"
+          @click="() => avatarInput?.click()"
+        >
+          <i v-if="avatarUploading" class="las la-circle-notch la-spin text-[9px]"></i>
+          <i v-else class="las la-camera text-[9px]"></i>
+        </button>
       </div>
-      <div>
-        <h1 class="text-lg font-bold text-gray-900">{{ auth.user?.fullName || auth.user?.email || 'My Profile' }}</h1>
+
+      <div class="min-w-0 flex-1">
+        <h1 class="text-lg font-bold text-gray-900 truncate">{{ auth.user?.fullName || auth.user?.email || 'My Profile' }}</h1>
         <div class="mt-0.5 flex items-center gap-2 flex-wrap">
           <span
             v-for="role in auth.roles"
@@ -42,6 +63,10 @@
             <i class="las la-check-circle text-xs"></i>Verified
           </span>
         </div>
+        <p v-if="avatarError" class="mt-1 text-[10px] text-red-600 flex items-center gap-0.5">
+          <i class="las la-exclamation-circle"></i>{{ avatarError }}
+        </p>
+        <p v-else-if="avatarUploading" class="mt-1 text-[10px] text-gray-500">Uploading photo…</p>
       </div>
     </div>
 
@@ -401,6 +426,7 @@ definePageMeta({ middleware: ['auth'], layout: 'account' })
 useHead({ title: 'My Profile - CribHub' })
 
 const auth = useAuthStore()
+const config = useRuntimeConfig()
 
 const activeTab = ref<'personal' | 'security' | 'preferences'>('personal')
 
@@ -411,7 +437,16 @@ const tabs = [
 ]
 
 // Avatar
-const avatarPreview = ref<string | null>(null)
+const avatarInput = ref<HTMLInputElement | null>(null)
+const avatarLocalPreview = ref<string | null>(null)
+const avatarUploading = ref(false)
+const avatarError = ref<string | null>(null)
+
+/** Prioritise: local preview → user.avatarUrl → null */
+const avatarSrc = computed<string | null>(() => {
+  if (avatarLocalPreview.value) return avatarLocalPreview.value
+  return (auth.user as any)?.avatarUrl || null
+})
 
 const userIsVerified = computed(() => !!(auth.user as any)?.isVerified)
 const userCreatedAt = computed(() => (auth.user as any)?.createdAt as string | undefined)
@@ -421,12 +456,70 @@ const initials = computed(() => {
   return n.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()
 })
 
-function onAvatarChange(e: Event) {
+async function onAvatarChange(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
+  if (avatarInput.value) avatarInput.value.value = ''
   if (!file) return
+
+  if (!file.type.startsWith('image/')) {
+    avatarError.value = 'Please select an image file (JPEG, PNG, WebP, or GIF).'
+    return
+  }
+  if (file.size > 8 * 1024 * 1024) {
+    avatarError.value = 'Image must be under 8 MB.'
+    return
+  }
+
+  // Local preview so the user sees the new photo immediately
   const reader = new FileReader()
-  reader.onload = (ev) => { avatarPreview.value = ev.target?.result as string }
+  reader.onload = (ev) => { avatarLocalPreview.value = ev.target?.result as string }
   reader.readAsDataURL(file)
+
+  avatarError.value = null
+  avatarUploading.value = true
+  try {
+    const userId = (auth.user as any)?._id?.toString?.()
+    if (!userId) throw new Error('Missing user ID')
+
+    const token = (auth as any).accessToken || localStorage.getItem('accessToken') || ''
+
+    const formData = new FormData()
+    formData.append('file', file, file.name)
+    formData.append('entityType', 'users')
+    formData.append('entityId', userId)
+    formData.append('purpose', 'avatar')
+
+    const res = await fetch(`${config.public.apiBaseUrl}/file-upload`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    })
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err?.error || `Upload failed (${res.status})`)
+    }
+
+    const data = await res.json()
+    const url: string | undefined =
+      data?.cloudinary?.secure_url ||
+      data?.uploaded?.[0]?.cloudinary?.secure_url
+
+    if (!url) throw new Error('No URL returned from upload.')
+
+    // Patch auth store + localStorage so the new URL shows everywhere
+    if (auth.user) {
+      auth.user = { ...auth.user, avatarUrl: url } as any
+      localStorage.setItem('user', JSON.stringify(auth.user))
+    }
+    // Clear local preview — avatarSrc now uses user.avatarUrl
+    avatarLocalPreview.value = null
+  } catch (e: any) {
+    avatarError.value = e?.message || 'Upload failed. Please try again.'
+    avatarLocalPreview.value = null
+  } finally {
+    avatarUploading.value = false
+  }
 }
 
 // Personal
