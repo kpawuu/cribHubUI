@@ -1,2 +1,45 @@
 User-Agent: *
-Disallow:
+
+# Public routes — allow
+Allow: /$
+Allow: /listings
+Allow: /browse-units
+Allow: /properties/
+Allow: /agents/
+Allow: /blog/
+Allow: /tools/
+Allow: /explore/
+Allow: /p/
+
+# Private / thin-content — block
+Disallow: /auth/
+Disallow: /dashboard
+Disallow: /dashboard/
+Disallow: /onboarding/
+Disallow: /profile
+Disallow: /profile/
+Disallow: /applications
+Disallow: /applications/
+Disallow: /contracts
+Disallow: /contracts/
+Disallow: /legal-documents
+Disallow: /legal-documents/
+Disallow: /messages
+Disallow: /messages/
+Disallow: /notifications
+Disallow: /notifications/
+Disallow: /favorites
+Disallow: /favorites/
+Disallow: /landlord/
+Disallow: /agent/
+Disallow: /tenant/
+Disallow: /verification/
+Disallow: /payments/
+Disallow: /apply/
+
+# Dynamic search params produce duplicate content — block query-filtered variants
+Disallow: /*?*page=
+Disallow: /*?*sort=
+
+# Sitemap
+Sitemap: https://cribhub.com/sitemap.xml

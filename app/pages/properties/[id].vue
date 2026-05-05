@@ -1029,6 +1029,7 @@ import { useFavoritesStore } from '@@/stores/favorites'
 import { usePropertiesStore, type PropertyAgent } from '@@/stores/properties'
 import { useInquiriesStore, useChatMessagesStore } from '@@/stores/operations'
 import { useRentalApplicationsStore } from '@@/stores/rentalApplications'
+import { useSeo, buildListingSchema, buildBreadcrumbSchema } from '../../composables/useSeo'
 
 const auth = useAuthStore()
 const favorites = useFavoritesStore()
@@ -1039,10 +1040,43 @@ const apps = useRentalApplicationsStore()
 
 const route = useRoute()
 const id = computed(() => String(route.params.id))
+const { public: { siteUrl } } = useRuntimeConfig()
 
 const FALLBACK_IMAGE = '/images/apartments/6.jpeg'
 
 const property = computed(() => properties.selected)
+
+useSeo(computed(() => {
+  const p = property.value
+  const location = [p?.city, p?.country].filter(Boolean).join(', ')
+  const intentLabel = p?.intent === 'rent' ? 'for Rent' : p?.intent === 'buy' ? 'for Sale' : ''
+  const title = p
+    ? `${p.name || 'Property'} ${intentLabel ? `${intentLabel} ` : ''}${location ? `in ${location}` : ''}`.trim()
+    : 'Property Listing'
+  const bedsLabel = p?.bedrooms ? `${p.bedrooms}-bed ` : ''
+  const description = p?.description
+    ? p.description.slice(0, 155)
+    : `${bedsLabel}${p?.propertyType || 'property'} ${intentLabel} ${location ? `in ${location}` : 'in Ghana'} — listed on CribHub.`
+  const images: string[] = Array.isArray(p?.images) ? p.images : p?.coverImageUrl ? [p.coverImageUrl] : []
+  return {
+    title,
+    description,
+    image: images[0],
+    type: 'website',
+    structuredData: {
+      '@context': 'https://schema.org',
+      '@graph': [
+        buildListingSchema(p, siteUrl as string),
+        buildBreadcrumbSchema([
+          { name: 'Home',       url: siteUrl as string },
+          { name: 'Listings',   url: `${siteUrl}/listings` },
+          { name: p?.city || 'Property', url: `${siteUrl}/listings?city=${encodeURIComponent(p?.city || '')}` },
+          { name: title,        url: `${siteUrl}/properties/${id.value}` },
+        ]),
+      ].filter(Boolean),
+    },
+  }
+}))
 
 /** Assigned agent from API (`include=agent`); null if missing or invalid. */
 const propertyAgent = computed((): PropertyAgent | null => {

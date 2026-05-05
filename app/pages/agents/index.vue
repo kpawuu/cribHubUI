@@ -171,8 +171,18 @@
 <script setup lang="ts">
 import { useAgentsStore } from '@@/stores/agents'
 
+import { useSeo } from '../../composables/useSeo'
 definePageMeta({ layout: 'default' })
-useHead({ title: 'Find an Agent - CribHub' })
+useSeo({
+  title: 'Find a Real Estate Agent in Ghana',
+  description: 'Browse certified real estate agents across Ghana. Compare ratings, specialities, and listings. Connect with top agents on CribHub to buy, rent, or sell property.',
+  structuredData: {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Real Estate Agents in Ghana — CribHub',
+    description: 'Directory of certified real estate agents on CribHub',
+  },
+})
 
 const agents = useAgentsStore()
 const scrollSentinel = ref<HTMLElement | null>(null)

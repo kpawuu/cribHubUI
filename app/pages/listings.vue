@@ -353,6 +353,30 @@ import { useAuthStore } from '@@/stores/auth'
 import { useFavoritesStore } from '@@/stores/favorites'
 import { usePropertiesStore } from '@@/stores/properties'
 import { useListingSidebarStore } from '@@/stores/listingSidebar'
+import { useSeo } from '../composables/useSeo'
+
+definePageMeta({ layout: 'default' })
+
+useSeo(computed(() => {
+  const route = useRoute()
+  const location = String(route.query.location || '')
+  const type = String(route.query.type || 'rent')
+  const titleParts = ['Properties']
+  if (location) titleParts.push(`in ${location}`)
+  const typeLabel = type === 'rent' ? 'for Rent' : type === 'buy' ? 'for Sale' : type === 'commercial' ? '(Commercial)' : ''
+  if (typeLabel) titleParts.push(typeLabel)
+  titleParts.push('Ghana')
+  return {
+    title: titleParts.join(' '),
+    description: `Browse verified properties ${location ? `in ${location}` : 'across Ghana'} ${typeLabel.toLowerCase()}. Filter by type, price, and size. Find your perfect home on CribHub.`,
+    structuredData: {
+      '@context': 'https://schema.org',
+      '@type': 'SearchResultsPage',
+      name: `Property Search Results – CribHub`,
+      description: `Search results for properties in Ghana on CribHub`,
+    },
+  }
+}))
 
 const pinia = usePinia()
 const properties = usePropertiesStore(pinia)

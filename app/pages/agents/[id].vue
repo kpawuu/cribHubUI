@@ -663,8 +663,11 @@ import {
   agentProfileRatingCount,
 } from '../../composables/useAgentProfileRatings'
 import { useAuthStore } from '@@/stores/auth'
+import { useSeo, buildAgentSchema, buildBreadcrumbSchema } from '../../composables/useSeo'
 
 definePageMeta({ layout: 'default' })
+
+const { public: { siteUrl } } = useRuntimeConfig()
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -722,10 +725,31 @@ const recentReviews = computed(() => {
 
 const isAuthenticated = computed(() => !!auth.user)
 
-// ─── Head ───────────────────────────────────────────────────────
-useHead(computed(() => ({
-  title: agent.value ? `${agent.value.displayName} — CribHub` : 'Agent Profile — CribHub'
-})))
+// ─── Head / SEO ─────────────────────────────────────────────────
+useSeo(computed(() => {
+  const a = agent.value
+  const name = a?.displayName || a?.name || 'Real Estate Agent'
+  const agency = a?.agency ? ` at ${a.agency}` : ''
+  const reviewStr = ratingCount.value > 0 ? ` · ${ratingAvg.value}★ (${ratingCount.value} reviews)` : ''
+  return {
+    title: a ? `${name}${reviewStr}` : 'Agent Profile',
+    description: a?.bio
+      ? a.bio.slice(0, 155)
+      : `${name}${agency} — certified real estate agent on CribHub${reviewStr}. View listings, ratings, and get in touch.`,
+    image: a?.avatarUrl || a?.coverImage || undefined,
+    structuredData: {
+      '@context': 'https://schema.org',
+      '@graph': [
+        buildAgentSchema(a, siteUrl as string),
+        buildBreadcrumbSchema([
+          { name: 'Home',   url: siteUrl as string },
+          { name: 'Agents', url: `${siteUrl}/agents` },
+          { name: name,     url: `${siteUrl}/agents/${id.value}` },
+        ]),
+      ].filter(Boolean),
+    },
+  }
+}))
 
 // ─── Helpers ────────────────────────────────────────────────────
 const bannerImages = [

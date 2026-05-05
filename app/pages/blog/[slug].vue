@@ -17,11 +17,13 @@
 
 <script setup lang="ts">
 import { useSitePagesStore } from '@@/stores/sitePages'
+import { useSeo, buildBlogPostSchema, buildBreadcrumbSchema } from '../../composables/useSeo'
 
 definePageMeta({ layout: 'default' })
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug || ''))
+const { public: { siteUrl } } = useRuntimeConfig()
 
 const sitePages = useSitePagesStore()
 const { data: page, pending } = await useAsyncData(
@@ -35,12 +37,25 @@ const { toDisplayHtml } = useSitePageBody()
 
 const htmlBody = computed(() => (pageLive.value ? toDisplayHtml(pageLive.value.body) : ''))
 
-useHead(() => ({
-  title: pageLive.value?.metaTitle || pageLive.value?.title
-    ? `${pageLive.value?.metaTitle || pageLive.value?.title} — CribHub`
-    : 'Blog — CribHub',
-  meta: pageLive.value?.metaDescription
-    ? [{ name: 'description', content: pageLive.value.metaDescription }]
-    : []
+useSeo(computed(() => {
+  const p = pageLive.value
+  const title = p?.metaTitle || p?.title || 'CribHub Blog'
+  return {
+    title,
+    description: p?.metaDescription || `Read "${title}" on the CribHub blog — insights and guides on Ghana real estate.`,
+    image: p?.coverImageUrl || undefined,
+    type: 'article',
+    structuredData: {
+      '@context': 'https://schema.org',
+      '@graph': [
+        buildBlogPostSchema(p, siteUrl as string),
+        buildBreadcrumbSchema([
+          { name: 'Home', url: siteUrl as string },
+          { name: 'Blog', url: `${siteUrl}/blog` },
+          { name: title,  url: `${siteUrl}/blog/${slug.value}` },
+        ]),
+      ].filter(Boolean),
+    },
+  }
 }))
 </script>

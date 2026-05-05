@@ -722,6 +722,7 @@
 <script setup lang="ts">
 import { usePropertiesStore } from '@@/stores/properties'
 import { useAgentsStore } from '@@/stores/agents'
+import { useSeo, buildOrganizationSchema, buildWebSiteSchema } from '../composables/useSeo'
 
 type FeaturedCard = {
   _id?: string
@@ -739,7 +740,20 @@ type FeaturedCard = {
   sizeLabel?: string
 }
 
-useHead({ title: 'CribHub - Find Your Perfect Home' })
+const { public: { siteUrl } } = useRuntimeConfig()
+
+useSeo(computed(() => ({
+  title: 'CribHub – Find Your Perfect Home in Ghana',
+  description: "Ghana's #1 property platform. Browse thousands of verified homes, apartments, and commercial spaces for rent or sale in Accra and beyond. Find certified agents today.",
+  type: 'website',
+  structuredData: {
+    '@context': 'https://schema.org',
+    '@graph': [
+      buildOrganizationSchema(siteUrl as string),
+      buildWebSiteSchema(siteUrl as string),
+    ],
+  },
+})))
 
 const properties = usePropertiesStore()
 const agents = useAgentsStore()
