@@ -190,15 +190,26 @@ const properties = usePropertiesStore()
 const isPmOnly = computed(
   () => auth.hasRole('property_manager') && !auth.hasRole('landlord', 'admin')
 )
+const isAgentOnly = computed(
+  () => auth.hasRole('agent') && !auth.hasRole('landlord', 'admin', 'property_manager')
+)
 const canAddProperty = computed(() => auth.hasRole('landlord', 'admin'))
 const canRemoveProperty = computed(() => auth.hasRole('landlord', 'admin'))
-const pageKicker = computed(() => (isPmOnly.value ? 'Portfolio' : 'Landlord'))
-const pageTitle = computed(() => (isPmOnly.value ? 'Properties' : 'My properties'))
-const listSubtitle = computed(() => (isPmOnly.value ? 'on the platform' : 'in your portfolio'))
+const pageKicker = computed(() =>
+  isAgentOnly.value ? 'Representations' : isPmOnly.value ? 'Portfolio' : 'Landlord'
+)
+const pageTitle = computed(() =>
+  isAgentOnly.value ? 'Assigned properties' : isPmOnly.value ? 'Properties' : 'My properties'
+)
+const listSubtitle = computed(() =>
+  isAgentOnly.value ? 'you represent' : isPmOnly.value ? 'on the platform' : 'in your portfolio'
+)
 const emptyStateHint = computed(() =>
-  isPmOnly.value
-    ? 'You are not assigned to any properties yet, or ask a landlord to accept your request to manage a listing.'
-    : 'Add your first building or complex to start managing units.'
+  isAgentOnly.value
+    ? 'You are not yet representing any properties. Browse listings and send proposals to landlords.'
+    : isPmOnly.value
+      ? 'You are not assigned to any properties yet, or ask a landlord to accept your request to manage a listing.'
+      : 'Add your first building or complex to start managing units.'
 )
 const removingProperty = ref<any>(null)
 const removing = ref(false)
@@ -218,7 +229,13 @@ async function doRemove() {
     await properties.removeProperty(String(removingProperty.value._id))
     removingProperty.value = null
     await properties.fetchList({
-      ...(canAddProperty.value ? { mine: true } : isPmOnly.value ? { pmPortfolio: true } : {}),
+      ...(canAddProperty.value
+        ? { mine: true }
+        : isPmOnly.value
+          ? { pmPortfolio: true }
+          : isAgentOnly.value
+            ? { agentPortfolio: true }
+            : {}),
       include: 'agent',
       $sort: { createdAt: -1 } as any
     })
@@ -230,7 +247,13 @@ onMounted(async () => {
   if (!auth.isReady) await auth.bootstrap()
   if (auth.isAuthenticated && !auth.roles.length) await auth.fetchRoles()
   await properties.fetchList({
-    ...(canAddProperty.value ? { mine: true } : isPmOnly.value ? { pmPortfolio: true } : {}),
+    ...(canAddProperty.value
+      ? { mine: true }
+      : isPmOnly.value
+        ? { pmPortfolio: true }
+        : isAgentOnly.value
+          ? { agentPortfolio: true }
+          : {}),
     include: 'agent',
     $sort: { createdAt: -1 } as any
   })

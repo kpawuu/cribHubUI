@@ -22,6 +22,29 @@
             class="flex h-5 items-center justify-center rounded-full bg-primary-600 px-1.5 text-[10px] font-bold text-white"
           >{{ newCount }}</span>
         </div>
+        <!-- Source pills -->
+        <div class="mt-2.5 flex items-center gap-1">
+          <button
+            type="button"
+            class="rounded-full px-2.5 py-0.5 text-xs font-medium transition"
+            :class="sourceFilter === 'inquiries' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+            @click="sourceFilter = 'inquiries'"
+          >Inquiries
+            <span v-if="(inq.list || []).length" class="ml-1 rounded-full px-1 text-[10px] font-bold leading-none"
+              :class="sourceFilter === 'inquiries' ? 'bg-white/30 text-white' : 'bg-gray-300 text-gray-700'"
+            >{{ inq.list.length }}</span>
+          </button>
+          <button
+            type="button"
+            class="rounded-full px-2.5 py-0.5 text-xs font-medium transition"
+            :class="sourceFilter === 'direct' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+            @click="sourceFilter = 'direct'"
+          >Direct chats
+            <span v-if="(threadsStore.list || []).length" class="ml-1 rounded-full px-1 text-[10px] font-bold leading-none"
+              :class="sourceFilter === 'direct' ? 'bg-white/30 text-white' : 'bg-gray-300 text-gray-700'"
+            >{{ threadsStore.list.length }}</span>
+          </button>
+        </div>
         <!-- Search -->
         <div class="relative mt-2.5">
           <i class="las la-search absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-gray-400"></i>
@@ -32,8 +55,8 @@
             class="w-full rounded border border-gray-200 bg-gray-50 py-1.5 pl-8 pr-3 text-sm placeholder-gray-400 transition focus:border-primary-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary-400"
           />
         </div>
-        <!-- Status filter pills (landlord/agent only) -->
-        <div v-if="useLandlordInbox" class="mt-2.5 flex items-center gap-1 overflow-x-auto pb-0.5">
+        <!-- Status filter pills (landlord/agent only, inquiries source) -->
+        <div v-if="useLandlordInbox && sourceFilter === 'inquiries'" class="mt-2.5 flex items-center gap-1 overflow-x-auto pb-0.5">
           <button
             v-for="f in statusFilters"
             :key="f.value"
@@ -68,13 +91,14 @@
         </div>
 
         <!-- Empty -->
-        <div v-else-if="!filteredThreads.length" class="flex flex-col items-center justify-center py-16 text-center">
+        <div v-else-if="!filteredThreads.length && !filteredDirectThreads.length" class="flex flex-col items-center justify-center py-16 text-center">
           <div class="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-gray-100">
             <i class="las la-comment-slash text-2xl text-gray-400"></i>
           </div>
           <p class="text-sm font-medium text-gray-700">No conversations yet</p>
           <p class="mt-1 text-xs text-gray-400">
-            <template v-if="useLandlordInbox">Tenant inquiries will appear here.</template>
+            <template v-if="sourceFilter === 'direct'">Direct chats with landlords, agents and property managers will appear here.</template>
+            <template v-else-if="useLandlordInbox">Tenant inquiries will appear here.</template>
             <template v-else>
               Message a listing to start a conversation.
               <br />
@@ -83,8 +107,8 @@
           </p>
         </div>
 
-        <!-- Thread items -->
-        <div v-else>
+        <!-- Thread items (inquiry-based) -->
+        <div v-else-if="sourceFilter === 'inquiries'">
           <button
             v-for="thread in filteredThreads"
             :key="thread._id"
@@ -125,6 +149,34 @@
           <div v-if="inq.isLoadingMore" class="flex justify-center py-3">
             <i class="las la-circle-notch la-spin text-gray-400"></i>
           </div>
+        </div>
+
+        <!-- Direct chats (threads service) -->
+        <div v-else>
+          <NuxtLink
+            v-for="t in filteredDirectThreads"
+            :key="t._id"
+            :to="`/messages/${t._id}`"
+            class="flex w-full items-start gap-3 px-3 py-3 text-left transition hover:bg-gray-50"
+          >
+            <div
+              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+              :class="avatarColors(t)"
+            >
+              {{ directAvatarLetter(t) }}
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center justify-between gap-1">
+                <p class="truncate text-sm font-semibold text-gray-900">{{ t.title || directOtherName(t) || 'Conversation' }}</p>
+                <span class="shrink-0 text-[10px] text-gray-400">{{ formatDate(t.lastMessageAt || t.createdAt) }}</span>
+              </div>
+              <p class="mt-0.5 truncate text-xs text-gray-500">
+                <span :class="directKindClass(t.kind)" class="mr-1.5">{{ directKindLabel(t.kind) }}</span>
+                <template v-if="t.propertyId">{{ propNames[t.propertyId] || '…' }}</template>
+              </p>
+              <p v-if="t.lastMessagePreview" class="mt-0.5 truncate text-xs text-gray-400">{{ t.lastMessagePreview }}</p>
+            </div>
+          </NuxtLink>
         </div>
       </div>
     </div>
@@ -341,7 +393,7 @@
 </template>
 
 <script setup lang="ts">
-import { useInquiriesStore, useChatMessagesStore } from '@@/stores/operations'
+import { useInquiriesStore, useChatMessagesStore, useThreadsStore } from '@@/stores/operations'
 import { useAuthStore } from '@@/stores/auth'
 
 definePageMeta({ middleware: ['auth'], layout: 'account' })
@@ -350,10 +402,14 @@ useHead({ title: 'Messages – CribHub' })
 const auth = useAuthStore()
 const inq = useInquiriesStore()
 const chat = useChatMessagesStore()
+const threadsStore = useThreadsStore()
 const feathers = useNuxtApp().$feathers as any
 const scrollSentinel = ref<HTMLElement | null>(null)
 const messagesEl = ref<HTMLElement | null>(null)
 const composerEl = ref<HTMLTextAreaElement | null>(null)
+
+type SourceFilter = 'inquiries' | 'direct'
+const sourceFilter = ref<SourceFilter>('inquiries')
 
 // ── Auth helpers ───────────────────────────────────────────────────────────
 const roles = computed(() => (Array.isArray(auth.user?.roles) ? auth.user!.roles : []) as string[])
@@ -432,13 +488,91 @@ const filteredThreads = computed(() => {
         (r.message || '').toLowerCase().includes(q)
     )
   }
-  // Sort by most recent activity: lastMessageAt > createdAt
   return [...rows].sort((a, b) => {
     const ta = a.lastMessageAt || a.createdAt || ''
     const tb = b.lastMessageAt || b.createdAt || ''
     return tb > ta ? 1 : tb < ta ? -1 : 0
   })
 })
+
+// Other party display name cache for direct threads
+const directOtherNames = ref<Record<string, string>>({})
+
+async function resolveDirectThreadMetadata(rows: any[]) {
+  const propIds = [...new Set(rows.map((t) => t.propertyId).filter(Boolean))]
+  const toFetch = propIds.filter((id) => !propNames.value[id])
+  if (toFetch.length) {
+    await Promise.allSettled(toFetch.map(async (id) => {
+      try {
+        const p = await feathers.service('properties').get(id)
+        propNames.value[id] = (p as any)?.name || 'Property'
+      } catch { propNames.value[id] = 'Property' }
+    }))
+  }
+  const meId = myUserId.value
+  const userIds = new Set<string>()
+  for (const t of rows) {
+    const others = (t.participantIds || []).filter((u: string) => String(u) !== meId)
+    for (const u of others) if (u && !directOtherNames.value[u]) userIds.add(String(u))
+  }
+  if (userIds.size) {
+    await Promise.allSettled([...userIds].map(async (uid) => {
+      try {
+        const u = await feathers.service('users').get(uid)
+        directOtherNames.value[uid] = (u as any)?.fullName || (u as any)?.email || uid
+      } catch { directOtherNames.value[uid] = uid }
+    }))
+  }
+}
+
+function directOtherName(thread: any): string {
+  const meId = myUserId.value
+  const others = (thread.participantIds || []).filter((u: string) => String(u) !== meId)
+  if (!others.length) return ''
+  return directOtherNames.value[String(others[0])] || ''
+}
+
+function directAvatarLetter(thread: any): string {
+  const name = thread.title || directOtherName(thread)
+  return (name?.[0] || 'C').toUpperCase()
+}
+
+function directKindLabel(k: string): string {
+  return ({
+    'landlord-pm': 'PM',
+    'landlord-agent': 'Agent',
+    'landlord-tenant': 'Tenant'
+  } as Record<string, string>)[k] || 'Chat'
+}
+
+function directKindClass(k: string): string {
+  const base = 'inline-flex rounded px-1.5 py-0.5 text-[9px] font-bold uppercase'
+  return base + ' ' + ({
+    'landlord-pm': 'bg-blue-100 text-blue-700',
+    'landlord-agent': 'bg-purple-100 text-purple-700',
+    'landlord-tenant': 'bg-emerald-100 text-emerald-700'
+  } as Record<string, string>)[k] || (base + ' bg-gray-100 text-gray-600')
+}
+
+const filteredDirectThreads = computed(() => {
+  let rows = (threadsStore.list || []) as any[]
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.toLowerCase()
+    rows = rows.filter((t) =>
+      (t.title || '').toLowerCase().includes(q) ||
+      (directOtherName(t) || '').toLowerCase().includes(q) ||
+      (propNames.value[t.propertyId] || '').toLowerCase().includes(q) ||
+      (t.lastMessagePreview || '').toLowerCase().includes(q)
+    )
+  }
+  return [...rows].sort((a, b) => {
+    const ta = a.lastMessageAt || a.createdAt || ''
+    const tb = b.lastMessageAt || b.createdAt || ''
+    return tb > ta ? 1 : tb < ta ? -1 : 0
+  })
+})
+
+watch(() => threadsStore.list.length, () => { void resolveDirectThreadMetadata(threadsStore.list) })
 
 // ── Status management ──────────────────────────────────────────────────────
 const updatingStatus = ref(false)
@@ -636,10 +770,16 @@ useInfiniteScroll(scrollSentinel, () => { void inq.loadMore() })
 // ── Mount ──────────────────────────────────────────────────────────────────
 onMounted(async () => {
   if (!auth.isReady) await auth.bootstrap()
-  await inq.fetchList({ $sort: { createdAt: -1 } })
-  await resolvePropertyNames(inq.list)
+  await Promise.allSettled([
+    inq.fetchList({ $sort: { createdAt: -1 } }),
+    threadsStore.fetchList({ $sort: { lastMessageAt: -1, createdAt: -1 } })
+  ])
+  await Promise.allSettled([
+    resolvePropertyNames(inq.list),
+    resolveDirectThreadMetadata(threadsStore.list)
+  ])
   document.addEventListener('click', onBodyClick)
-  void reqPerm() // request browser notification permission once
+  void reqPerm()
 })
 
 onBeforeUnmount(() => {

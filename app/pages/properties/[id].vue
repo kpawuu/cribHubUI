@@ -571,28 +571,35 @@
       class="fixed inset-0 z-50 flex items-end justify-center bg-gray-900/50 p-4 sm:items-center"
       @click.self="pmRequestOpen = false"
     >
-      <div class="w-full max-w-md rounded border border-gray-200 bg-white shadow-xl" @click.stop>
-        <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-          <h3 class="text-sm font-bold text-gray-900">Request to manage listing</h3>
+      <div class="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded border border-gray-200 bg-white shadow-xl" @click.stop>
+        <div class="flex shrink-0 items-center justify-between border-b border-gray-100 px-5 py-4">
+          <div>
+            <h3 class="text-sm font-bold text-gray-900">Request to manage listing</h3>
+            <p class="mt-0.5 text-[11px] text-gray-500">Propose your management fee; the landlord can accept, decline or counter.</p>
+          </div>
           <button type="button" class="text-gray-400 hover:text-gray-600" aria-label="Close" @click="pmRequestOpen = false">
             <i class="las la-times text-xl"></i>
           </button>
         </div>
-        <div class="px-5 py-4">
-          <p v-if="pmReqError" class="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">{{ pmReqError }}</p>
-          <p v-if="pmReqSuccess" class="mb-3 rounded border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-800">{{ pmReqSuccess }}</p>
-          <form class="space-y-3" @submit.prevent="submitPmListingRequest">
-            <div>
-              <label class="mb-1 block text-xs font-semibold text-gray-600">Note to the landlord <span class="font-normal text-gray-400">(optional)</span></label>
-              <textarea v-model="pmMessage" rows="3" maxlength="2000" class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500" placeholder="How you can help, availability, experience…" />
-            </div>
-            <div class="flex justify-end gap-2 pt-1">
-              <button type="button" class="rounded border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" @click="pmRequestOpen = false">Cancel</button>
-              <button type="submit" class="rounded bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50" :disabled="pmReqSubmitting">
-                {{ pmReqSubmitting ? 'Sending…' : 'Submit request' }}
-              </button>
-            </div>
-          </form>
+        <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4 space-y-3">
+          <p v-if="pmReqError" class="mb-1 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">{{ pmReqError }}</p>
+          <p v-if="pmReqSuccess" class="mb-1 rounded border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-800">{{ pmReqSuccess }}</p>
+          <div>
+            <label class="mb-1 block text-xs font-semibold text-gray-700">Your management fee proposal</label>
+            <UiFeeProposalEditor v-model="pmProposal" />
+          </div>
+          <div>
+            <label class="mb-1 block text-xs font-semibold text-gray-600">Note to the landlord <span class="font-normal text-gray-400">(optional)</span></label>
+            <textarea v-model="pmMessage" rows="3" maxlength="2000" class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500" placeholder="How you can help, availability, experience…" />
+          </div>
+        </div>
+        <div class="flex shrink-0 items-center justify-end gap-2 border-t border-gray-100 px-5 py-3">
+          <button type="button" class="rounded border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" @click="pmRequestOpen = false">Cancel</button>
+          <button type="button" class="inline-flex items-center gap-1.5 rounded bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50" :disabled="pmReqSubmitting" @click="submitPmListingRequest">
+            <i v-if="pmReqSubmitting" class="las la-circle-notch la-spin text-sm"></i>
+            <i v-else class="las la-paper-plane text-sm"></i>
+            {{ pmReqSubmitting ? 'Sending…' : 'Submit request' }}
+          </button>
         </div>
       </div>
     </div>
@@ -603,32 +610,35 @@
       class="fixed inset-0 z-50 flex items-end justify-center bg-gray-900/50 p-4 sm:items-center"
       @click.self="agentRequestOpen = false"
     >
-      <div class="w-full max-w-md rounded border border-gray-200 bg-white shadow-xl" @click.stop>
-        <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-          <h3 class="text-sm font-bold text-gray-900">Request to represent listing</h3>
+      <div class="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded border border-gray-200 bg-white shadow-xl" @click.stop>
+        <div class="flex shrink-0 items-center justify-between border-b border-gray-100 px-5 py-4">
+          <div>
+            <h3 class="text-sm font-bold text-gray-900">Request to represent listing</h3>
+            <p class="mt-0.5 text-[11px] text-gray-500">Propose your commission; the landlord can accept, decline, or counter.</p>
+          </div>
           <button type="button" class="text-gray-400 hover:text-gray-600" aria-label="Close" @click="agentRequestOpen = false">
             <i class="las la-times text-xl"></i>
           </button>
         </div>
-        <div class="px-5 py-4">
-          <p v-if="agentReqError" class="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">{{ agentReqError }}</p>
-          <p v-if="agentReqSuccess" class="mb-3 rounded border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-800">{{ agentReqSuccess }}</p>
-          <form class="space-y-3" @submit.prevent="submitAgentListingRequest">
-            <div>
-              <label class="mb-1 block text-xs font-semibold text-gray-600">Proposed commission % <span class="font-normal text-gray-400">(optional)</span></label>
-              <input v-model.number="agentCommission" type="number" min="0" max="100" step="0.5" class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500" placeholder="e.g. 3" />
-            </div>
-            <div>
-              <label class="mb-1 block text-xs font-semibold text-gray-600">Pitch to the landlord <span class="font-normal text-gray-400">(optional)</span></label>
-              <textarea v-model="agentPitch" rows="3" maxlength="2000" class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500" placeholder="Experience, marketing plan, timeline…" />
-            </div>
-            <div class="flex justify-end gap-2 pt-1">
-              <button type="button" class="rounded border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" @click="agentRequestOpen = false">Cancel</button>
-              <button type="submit" class="rounded bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50" :disabled="agentReqSubmitting">
-                {{ agentReqSubmitting ? 'Sending…' : 'Submit request' }}
-              </button>
-            </div>
-          </form>
+        <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4 space-y-3">
+          <p v-if="agentReqError" class="mb-1 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">{{ agentReqError }}</p>
+          <p v-if="agentReqSuccess" class="mb-1 rounded border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-800">{{ agentReqSuccess }}</p>
+          <div>
+            <label class="mb-1 block text-xs font-semibold text-gray-700">Your commission proposal</label>
+            <UiFeeProposalEditor v-model="agentProposal" />
+          </div>
+          <div>
+            <label class="mb-1 block text-xs font-semibold text-gray-600">Pitch to the landlord <span class="font-normal text-gray-400">(optional)</span></label>
+            <textarea v-model="agentPitch" rows="3" maxlength="2000" class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500" placeholder="Experience, marketing plan, timeline…" />
+          </div>
+        </div>
+        <div class="flex shrink-0 items-center justify-end gap-2 border-t border-gray-100 px-5 py-3">
+          <button type="button" class="rounded border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" @click="agentRequestOpen = false">Cancel</button>
+          <button type="button" class="inline-flex items-center gap-1.5 rounded bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50" :disabled="agentReqSubmitting" @click="submitAgentListingRequest">
+            <i v-if="agentReqSubmitting" class="las la-circle-notch la-spin text-sm"></i>
+            <i v-else class="las la-paper-plane text-sm"></i>
+            {{ agentReqSubmitting ? 'Sending…' : 'Submit request' }}
+          </button>
         </div>
       </div>
     </div>
@@ -1032,6 +1042,7 @@ import { usePropertiesStore, type PropertyAgent } from '@@/stores/properties'
 import { useInquiriesStore, useChatMessagesStore } from '@@/stores/operations'
 import { useRentalApplicationsStore } from '@@/stores/rentalApplications'
 import { useSeo, buildListingSchema, buildBreadcrumbSchema } from '../../composables/useSeo'
+import { defaultFeeToProposal, emptyProposal, type FeeProposal } from '../../composables/useFeeProposal'
 
 const auth = useAuthStore()
 const favorites = useFavoritesStore()
@@ -1152,6 +1163,7 @@ const photoLightboxIndex = ref(0)
 const agentRequestOpen = ref(false)
 const agentCommission = ref<number | null>(null)
 const agentPitch = ref('')
+const agentProposal = ref<FeeProposal | null>(null)
 const agentReqSubmitting = ref(false)
 const agentReqError = ref<string | null>(null)
 const agentReqSuccess = ref<string | null>(null)
@@ -1174,17 +1186,32 @@ const isOwnListingAsPm = computed(() => {
 const pmAssignedHere = ref(false)
 const pmRequestOpen = ref(false)
 const pmMessage = ref('')
+const pmProposal = ref<FeeProposal | null>(null)
 const pmReqSubmitting = ref(false)
 const pmReqError = ref<string | null>(null)
 const pmReqSuccess = ref<string | null>(null)
 const pmListingPending = ref(false)
 
-function openAgentListingRequest() {
+async function openAgentListingRequest() {
   agentReqError.value = null
   agentReqSuccess.value = null
   agentCommission.value = null
   agentPitch.value = ''
+  agentProposal.value = await loadDefaultAgentProposal()
   agentRequestOpen.value = true
+}
+
+async function loadDefaultAgentProposal(): Promise<FeeProposal> {
+  try {
+    const uid = (auth.user as any)?._id?.toString?.()
+    if (!uid) return emptyProposal()
+    const feathers = useNuxtApp().$feathers as any
+    const res = await feathers.service('agent-profiles').find({ query: { userId: uid, $limit: 1 } })
+    const rows = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : []
+    const mine = rows[0]
+    if (mine?.defaultFee) return defaultFeeToProposal(mine.defaultFee)
+  } catch {}
+  return emptyProposal()
 }
 
 async function refreshAgentListingPending() {
@@ -1204,11 +1231,25 @@ async function refreshAgentListingPending() {
   }
 }
 
-function openPmListingRequest() {
+async function openPmListingRequest() {
   pmReqError.value = null
   pmReqSuccess.value = null
   pmMessage.value = ''
+  pmProposal.value = await loadDefaultPmProposal()
   pmRequestOpen.value = true
+}
+
+async function loadDefaultPmProposal(): Promise<FeeProposal> {
+  try {
+    const uid = (auth.user as any)?._id?.toString?.()
+    if (!uid) return emptyProposal()
+    const feathers = useNuxtApp().$feathers as any
+    const res = await feathers.service('property-manager-profiles').find({ query: { userId: uid, $limit: 1 } })
+    const rows = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : []
+    const mine = rows[0]
+    if (mine?.defaultFee) return defaultFeeToProposal(mine.defaultFee)
+  } catch {}
+  return emptyProposal()
 }
 
 async function refreshPmListingState() {
@@ -1243,6 +1284,9 @@ async function submitPmListingRequest() {
     const feathers = useNuxtApp().$feathers as any
     const payload: Record<string, any> = { propertyId: id.value }
     if (pmMessage.value.trim()) payload.message = pmMessage.value.trim()
+    if (pmProposal.value && (pmProposal.value.rent || pmProposal.value.sale)) {
+      payload.proposal = pmProposal.value
+    }
     await feathers.service('property-manager-listing-requests').create(payload)
     pmReqSuccess.value = 'Request sent. The landlord will be notified.'
     pmListingPending.value = true
@@ -1264,7 +1308,9 @@ async function submitAgentListingRequest() {
   try {
     const feathers = useNuxtApp().$feathers as any
     const payload: Record<string, any> = { propertyId: id.value }
-    if (agentCommission.value != null && Number.isFinite(Number(agentCommission.value))) {
+    if (agentProposal.value && (agentProposal.value.rent || agentProposal.value.sale)) {
+      payload.proposal = agentProposal.value
+    } else if (agentCommission.value != null && Number.isFinite(Number(agentCommission.value))) {
       payload.commissionPercent = Number(agentCommission.value)
     }
     if (agentPitch.value.trim()) payload.message = agentPitch.value.trim()

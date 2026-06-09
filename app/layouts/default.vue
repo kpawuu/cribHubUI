@@ -35,6 +35,7 @@
               >New Projects</NuxtLink
             >
             <NuxtLink to="/agents" class="text-sm font-medium text-gray-700 hover:text-primary-600 transition">Find Agent</NuxtLink>
+            <NuxtLink to="/property-managers" class="text-sm font-medium text-gray-700 hover:text-primary-600 transition">Find Manager</NuxtLink>
             <!-- Property Price dropdown -->
             <div class="group relative">
               <button
@@ -228,6 +229,7 @@
               >New Projects</NuxtLink
             >
             <NuxtLink to="/agents" class="block px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded active:bg-gray-100" @click="mobileMenuOpen = false">Find Agent</NuxtLink>
+            <NuxtLink to="/property-managers" class="block px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded active:bg-gray-100" @click="mobileMenuOpen = false">Find Property Manager</NuxtLink>
             <p class="px-3 pt-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Property price</p>
             <NuxtLink to="/tools/price-calculator" class="block px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded active:bg-gray-100" @click="mobileMenuOpen = false">Price calculator</NuxtLink>
             <NuxtLink to="/tools/market-trends" class="block px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded active:bg-gray-100" @click="mobileMenuOpen = false">Market trends</NuxtLink>
@@ -360,6 +362,7 @@
               <li><NuxtLink to="/p/about-us" class="text-sm hover:text-primary-400 transition">About Us</NuxtLink></li>
               <li><NuxtLink to="/p/contact" class="text-sm hover:text-primary-400 transition">Contact</NuxtLink></li>
               <li><NuxtLink to="/agents" class="text-sm hover:text-primary-400 transition">Agent Hub</NuxtLink></li>
+              <li><NuxtLink to="/property-managers" class="text-sm hover:text-primary-400 transition">Property Managers</NuxtLink></li>
               <li><NuxtLink to="/blog" class="text-sm hover:text-primary-400 transition">Blog</NuxtLink></li>
             </ul>
           </div>

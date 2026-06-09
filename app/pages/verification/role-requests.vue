@@ -138,6 +138,17 @@
                 "{{ r.notes }}"
               </span>
             </div>
+
+            <!-- Profile + documents toggle -->
+            <button
+              v-if="r.profile || (r.documents && r.documents.length)"
+              type="button"
+              class="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary-600 hover:text-primary-700"
+              @click="expanded[r._id] = !expanded[r._id]"
+            >
+              <i :class="expanded[r._id] ? 'las la-angle-up' : 'las la-angle-down'"></i>
+              {{ expanded[r._id] ? 'Hide application details' : 'Review application details' }}
+            </button>
           </div>
 
           <!-- Actions -->
@@ -168,6 +179,80 @@
             </template>
           </div>
         </div>
+
+        <!-- ── Expandable application details ── -->
+        <Transition name="slide-down">
+          <div v-if="expanded[r._id]" class="border-t border-gray-100 bg-gray-50 px-5 py-4">
+            <div class="grid gap-4 md:grid-cols-2">
+              <!-- Profile -->
+              <div v-if="r.profile" class="space-y-2">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400">{{ profileSectionTitle(r.role) }}</p>
+                <div class="rounded border border-gray-200 bg-white p-3 text-xs">
+                  <div class="flex items-start gap-3">
+                    <img
+                      v-if="r.profile.avatarUrl"
+                      :src="r.profile.avatarUrl"
+                      class="h-10 w-10 shrink-0 rounded object-cover"
+                      :alt="r.profile.displayName"
+                    />
+                    <span v-else class="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-gray-100 text-gray-400">
+                      <i class="las la-user text-xl"></i>
+                    </span>
+                    <div class="min-w-0 flex-1">
+                      <p class="text-sm font-semibold text-gray-900">{{ r.profile.displayName || '—' }}</p>
+                      <p v-if="r.profile.agency || r.profile.companyName" class="text-xs text-gray-600">
+                        {{ r.profile.agency || r.profile.companyName }}
+                      </p>
+                    </div>
+                  </div>
+                  <div v-if="r.profile.bio" class="mt-2 whitespace-pre-wrap leading-relaxed text-gray-700">{{ r.profile.bio }}</div>
+                  <dl class="mt-2 space-y-1">
+                    <div v-if="r.profile.emailPublic" class="flex justify-between gap-2">
+                      <dt class="text-gray-500">Public email</dt>
+                      <dd class="break-all text-gray-900">{{ r.profile.emailPublic }}</dd>
+                    </div>
+                    <div v-if="r.profile.phone" class="flex justify-between gap-2">
+                      <dt class="text-gray-500">Phone</dt>
+                      <dd class="text-gray-900">{{ r.profile.phone }}</dd>
+                    </div>
+                    <div v-if="r.profile.whatsapp" class="flex justify-between gap-2">
+                      <dt class="text-gray-500">WhatsApp</dt>
+                      <dd class="text-gray-900">{{ r.profile.whatsapp }}</dd>
+                    </div>
+                    <div v-if="r.profile.regions?.length" class="flex justify-between gap-2">
+                      <dt class="text-gray-500">Regions</dt>
+                      <dd class="text-gray-900">{{ r.profile.regions.join(', ') }}</dd>
+                    </div>
+                    <div v-if="r.profile.languages?.length" class="flex justify-between gap-2">
+                      <dt class="text-gray-500">Languages</dt>
+                      <dd class="text-gray-900">{{ r.profile.languages.join(', ') }}</dd>
+                    </div>
+                    <div v-if="r.profile.services?.length" class="flex justify-between gap-2">
+                      <dt class="text-gray-500">Services</dt>
+                      <dd class="text-gray-900">{{ r.profile.services.join(', ') }}</dd>
+                    </div>
+                    <div v-if="r.profile.portfolioSize != null" class="flex justify-between gap-2">
+                      <dt class="text-gray-500">Portfolio size</dt>
+                      <dd class="text-gray-900">{{ r.profile.portfolioSize }}</dd>
+                    </div>
+                    <div v-if="r.profile.yearsManaging != null" class="flex justify-between gap-2">
+                      <dt class="text-gray-500">Years managing</dt>
+                      <dd class="text-gray-900">{{ r.profile.yearsManaging }}</dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+
+              <!-- Documents -->
+              <div>
+                <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Verification documents</p>
+                <div class="mt-2">
+                  <UiVerificationDocsList :files="r.documents || []" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </Transition>
 
         <!-- ── Inline reject panel ── -->
         <Transition name="slide-down">
@@ -246,6 +331,14 @@ const visibleRows = computed(() =>
 const busy = ref<string | null>(null)
 const rejectingId = ref<string | null>(null)
 const rejectNotes = reactive<Record<string, string>>({})
+const expanded = reactive<Record<string, boolean>>({})
+
+function profileSectionTitle(role: string) {
+  if (role === 'agent') return 'Agent profile'
+  if (role === 'property_manager') return 'Property manager profile'
+  if (role === 'landlord') return 'Landlord details'
+  return 'Profile'
+}
 
 // ── User enrichment ────────────────────────────────────────────────────────
 const userMap = reactive<Record<string, any>>({})
@@ -270,8 +363,11 @@ async function enrichUsers(requests: any[]) {
 
 // ── Load ───────────────────────────────────────────────────────────────────
 async function load() {
-  // Fetch all requests so counts stay accurate when switching tabs
-  await rrStore.fetchList({ $sort: { createdAt: -1 }, $limit: 100 })
+  await rrStore.fetchList({
+    $sort: { createdAt: -1 },
+    $limit: 100,
+    $include: ['applicant', 'profile', 'documents']
+  })
   await enrichUsers(rows.value)
 }
 

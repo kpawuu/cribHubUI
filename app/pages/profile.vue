@@ -326,6 +326,13 @@
                 class="peer sr-only"
                 :disabled="pref.disabled"
               />
+              <input
+                v-else-if="pref.key === 'sms'"
+                v-model="smsNotifications"
+                type="checkbox"
+                class="peer sr-only"
+                :disabled="pref.disabled"
+              />
               <input v-else type="checkbox" class="peer sr-only" :disabled="true" />
               <div class="peer h-4 w-7 rounded-full bg-gray-300 after:absolute after:left-0.5 after:top-0.5 after:h-3 after:w-3 after:rounded-full after:bg-white after:transition peer-checked:bg-primary-600 peer-checked:after:translate-x-3"></div>
             </label>
@@ -615,13 +622,14 @@ async function signOut() {
 
 // Preferences
 const emailNotifications = ref((auth.user as any)?.emailNotifications !== false)
+const smsNotifications   = ref((auth.user as any)?.smsNotifications !== false)
 const prefError = ref<string | null>(null)
 const prefSuccess = ref<string | null>(null)
 const prefSaving = ref(false)
 
 const notifPrefs = [
   { key: 'email', label: 'Email notifications', icon: 'las la-envelope', desc: 'Important updates and activity emails', disabled: false },
-  { key: 'sms', label: 'SMS notifications', icon: 'las la-sms', desc: 'Coming soon', disabled: true },
+  { key: 'sms', label: 'SMS notifications', icon: 'las la-sms', desc: 'Transactional SMS alerts (requires phone on file)', disabled: false },
   { key: 'marketing', label: 'Marketing emails', icon: 'las la-bullhorn', desc: 'Coming soon', disabled: true },
 ]
 
@@ -636,6 +644,7 @@ watch(
   (u) => {
     if (!u) return
     emailNotifications.value = (u as any).emailNotifications !== false
+    smsNotifications.value   = (u as any).smsNotifications !== false
   },
   { deep: true }
 )
@@ -648,7 +657,10 @@ async function savePreferences() {
     const feathers = useNuxtApp().$feathers as any
     const id = (auth.user as any)?._id
     if (!id) throw new Error('Missing user ID')
-    const patched = await feathers.service('users').patch(id, { emailNotifications: emailNotifications.value })
+    const patched = await feathers.service('users').patch(id, {
+      emailNotifications: emailNotifications.value,
+      smsNotifications: smsNotifications.value
+    })
     auth.user = patched as any
     if (auth.user) localStorage.setItem('user', JSON.stringify(auth.user))
     prefSuccess.value = 'Preferences saved.'

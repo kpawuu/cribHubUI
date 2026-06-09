@@ -1,11 +1,10 @@
 <template>
   <div>
-    <!-- Page header -->
     <div class="mb-5 flex items-start justify-between gap-3">
       <div>
-        <h1 class="text-xl font-bold text-gray-900">My Listing Requests</h1>
+        <h1 class="text-xl font-bold text-gray-900">My Management Requests</h1>
         <p class="mt-0.5 text-sm text-gray-500">
-          Browse properties, propose your fee, and track negotiations end-to-end.
+          Browse properties, propose your management terms, and track negotiations end-to-end.
         </p>
       </div>
       <NuxtLink
@@ -17,7 +16,6 @@
       </NuxtLink>
     </div>
 
-    <!-- Status filter tabs -->
     <div class="mb-4 flex flex-wrap items-center gap-1 border-b border-gray-200">
       <button
         v-for="tab in tabs"
@@ -44,7 +42,6 @@
       </button>
     </div>
 
-    <!-- Alert -->
     <div
       v-if="actionMsg"
       class="mb-4 flex items-center gap-2 rounded border px-4 py-3 text-sm"
@@ -54,22 +51,20 @@
       {{ actionMsg }}
     </div>
 
-    <!-- Loading -->
     <div v-if="isLoading" class="flex items-center justify-center py-16 text-gray-400">
       <i class="las la-circle-notch la-spin text-3xl"></i>
     </div>
 
-    <!-- Empty state -->
     <div
       v-else-if="!filteredRequests.length"
       class="rounded bg-white px-4 py-12 text-center"
     >
       <i class="las la-clipboard-list text-4xl text-gray-300"></i>
       <p class="mt-2 text-sm font-medium text-gray-600">
-        {{ activeTab === 'all' ? 'No listing requests yet' : `No ${activeTab} requests` }}
+        {{ activeTab === 'all' ? 'No management requests yet' : `No ${activeTab} requests` }}
       </p>
       <p class="mt-1 text-xs text-gray-400">
-        Browse listings and tap "Request to represent" on any property.
+        Browse listings and tap "Request to manage" on any property.
       </p>
       <NuxtLink
         to="/listings"
@@ -79,7 +74,6 @@
       </NuxtLink>
     </div>
 
-    <!-- Request list -->
     <div v-else class="space-y-3">
       <div
         v-for="req in filteredRequests"
@@ -87,7 +81,6 @@
         class="rounded bg-white p-4"
       >
         <div class="flex items-start gap-3">
-          <!-- Property thumbnail -->
           <div class="h-14 w-14 shrink-0 overflow-hidden rounded border border-gray-200 bg-gray-100">
             <img
               v-if="propertiesMap[req.propertyId]?.coverImageUrl"
@@ -115,7 +108,6 @@
               </span>
             </div>
 
-            <!-- Meta -->
             <div class="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-500">
               <span class="inline-flex items-center gap-1">
                 <i class="las la-calendar-alt text-sm"></i>
@@ -131,20 +123,15 @@
               </NuxtLink>
             </div>
 
-            <!-- Fee proposal / counter terms -->
             <div class="mt-3 grid gap-2 sm:grid-cols-2">
               <div
-                v-if="req.proposal || req.commissionPercent != null"
+                v-if="req.proposal"
                 class="rounded border border-primary-100 bg-primary-50/40 px-3 py-2 text-xs"
               >
                 <p class="font-semibold text-primary-800">
                   <i class="las la-arrow-up text-primary-600"></i> Your proposal
                 </p>
-                <p class="mt-0.5 text-primary-700">
-                  {{ summarizeProposal(req.proposal) !== 'No fee proposed'
-                    ? summarizeProposal(req.proposal)
-                    : `${req.commissionPercent}% of rent` }}
-                </p>
+                <p class="mt-0.5 text-primary-700">{{ summarizeProposal(req.proposal) }}</p>
               </div>
               <div
                 v-if="req.counter"
@@ -172,17 +159,15 @@
           </div>
         </div>
 
-        <!-- Actions -->
         <div class="mt-3 flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 pt-3">
           <template v-if="req.status === 'pending'">
             <button
               type="button"
-              class="inline-flex items-center gap-1.5 rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:border-red-300 hover:bg-red-50 hover:text-red-700"
+              class="inline-flex items-center gap-1.5 rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:border-red-300 hover:bg-red-50 hover:text-red-700"
               :disabled="actingId === String(req._id)"
               @click="withdrawRequest(req)"
             >
-              <i class="las la-undo text-sm"></i>
-              Withdraw
+              <i class="las la-undo text-sm"></i> Withdraw
             </button>
           </template>
 
@@ -214,7 +199,7 @@
           </template>
 
           <span v-else-if="req.status === 'accepted'" class="text-xs font-medium text-emerald-700">
-            <i class="las la-check mr-1"></i>You are assigned to this property
+            <i class="las la-check mr-1"></i>You are managing this property
           </span>
           <span v-else-if="req.status === 'rejected'" class="text-xs text-gray-500">
             Request was declined by the landlord
@@ -223,7 +208,6 @@
       </div>
     </div>
 
-    <!-- Send request modal -->
     <Teleport to="body">
       <div
         v-if="showRequestModal"
@@ -234,12 +218,12 @@
           <div class="flex shrink-0 items-center justify-between border-b border-gray-100 px-5 py-4">
             <div>
               <h3 class="text-sm font-bold text-gray-900">
-                {{ modalMode === 'counter' ? 'Send updated proposal' : 'Request to represent listing' }}
+                {{ modalMode === 'counter' ? 'Send updated proposal' : 'Request to manage listing' }}
               </h3>
               <p class="mt-0.5 text-[11px] text-gray-500">
                 {{ modalMode === 'counter'
                   ? 'The landlord countered your terms. Adjust and resend.'
-                  : 'Propose your representation fee — the landlord can accept, decline, or counter.' }}
+                  : 'Propose your management fee — the landlord can accept, decline, or counter.' }}
               </p>
             </div>
             <button type="button" class="text-gray-400 hover:text-gray-600" @click="closeModal">
@@ -267,7 +251,7 @@
 
           <form class="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4" @submit.prevent="submitRequest">
             <div>
-              <label class="mb-1 block text-xs font-semibold text-gray-700">Your fee proposal</label>
+              <label class="mb-1 block text-xs font-semibold text-gray-700">Your management fee proposal</label>
               <UiFeeProposalEditor v-model="modalForm.proposal" />
             </div>
             <div v-if="modalMode === 'create'">
@@ -278,7 +262,7 @@
                 v-model="modalForm.message"
                 rows="3"
                 maxlength="4000"
-                placeholder="Introduce yourself and explain why you'd be a great fit for this property…"
+                placeholder="Introduce yourself and explain your management approach…"
                 class="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
               ></textarea>
             </div>
@@ -312,24 +296,31 @@
 
 <script setup lang="ts">
 import { useAuthStore } from '@@/stores/auth'
-import { useAgentListingRequestsStore, useAgentProfilesStore } from '@@/stores/operations'
-import { summarizeProposal, defaultFeeToProposal, emptyProposal, type FeeProposal } from '../../composables/useFeeProposal'
+import {
+  usePropertyManagerListingRequestsStore,
+  usePropertyManagerProfilesStore
+} from '@@/stores/operations'
+import {
+  summarizeProposal,
+  defaultFeeToProposal,
+  emptyProposal,
+  type FeeProposal
+} from '../../composables/useFeeProposal'
 
 definePageMeta({ middleware: ['auth'], layout: 'account' })
-useHead({ title: 'My Listing Requests – CribHub' })
+useHead({ title: 'My Management Requests – CribHub' })
 
 const auth = useAuthStore()
-const alrStore = useAgentListingRequestsStore()
-const apStore = useAgentProfilesStore()
+const reqStore = usePropertyManagerListingRequestsStore()
+const pmStore = usePropertyManagerProfilesStore()
 const feathers = useNuxtApp().$feathers as any
 const route = useRoute()
 
-interface ListingRequest {
+interface PmListingRequest {
   _id: string
   propertyId: string
-  agentUserId: string
+  managerUserId: string
   landlordId: string
-  commissionPercent?: number
   message?: string
   status: 'pending' | 'countered' | 'accepted' | 'rejected' | 'withdrawn'
   proposal?: FeeProposal
@@ -338,8 +329,8 @@ interface ListingRequest {
   createdAt: string
 }
 
-const isLoading = computed(() => alrStore.isLoading)
-const requests = computed(() => alrStore.list as unknown as ListingRequest[])
+const isLoading = computed(() => reqStore.isLoading)
+const requests = computed(() => reqStore.list as unknown as PmListingRequest[])
 const propertiesMap = ref<Record<string, any>>({})
 const activeTab = ref<'all' | 'pending' | 'countered' | 'accepted' | 'rejected' | 'withdrawn'>('all')
 const actingId = ref<string | null>(null)
@@ -357,7 +348,7 @@ const tabs = [
 
 const showRequestModal = ref(false)
 const modalProperty = ref<any>(null)
-const modalRequest = ref<ListingRequest | null>(null)
+const modalRequest = ref<PmListingRequest | null>(null)
 const modalMode = ref<'create' | 'counter'>('create')
 const modalForm = reactive<{
   proposal: FeeProposal | null
@@ -377,7 +368,7 @@ function countForTab(tab: string): number {
 }
 
 async function loadRequests() {
-  await alrStore.fetchList({ $sort: { createdAt: -1 } })
+  await reqStore.fetchList({ $sort: { createdAt: -1 } })
   const ids = [...new Set(requests.value.map((r) => r.propertyId))]
   await Promise.allSettled(
     ids.map(async (id) => {
@@ -396,11 +387,11 @@ watch(() => requests.value.length, async () => {
   }))
 })
 
-async function withdrawRequest(req: ListingRequest) {
+async function withdrawRequest(req: PmListingRequest) {
   actingId.value = String(req._id)
   actionMsg.value = null
   try {
-    await alrStore.patch(req._id, { status: 'withdrawn' })
+    await reqStore.patch(req._id, { status: 'withdrawn' })
     showMsg('Request withdrawn.', 'success')
   } catch (e: any) {
     showMsg(e?.message || 'Failed to withdraw request', 'error')
@@ -409,12 +400,12 @@ async function withdrawRequest(req: ListingRequest) {
   }
 }
 
-async function acceptCounter(req: ListingRequest) {
+async function acceptCounter(req: PmListingRequest) {
   actingId.value = String(req._id)
   actionMsg.value = null
   try {
-    await alrStore.patch(req._id, { status: 'accepted' })
-    showMsg('Counter accepted — you are now assigned.', 'success')
+    await reqStore.patch(req._id, { status: 'accepted' })
+    showMsg('Counter accepted — you are now managing this property.', 'success')
   } catch (e: any) {
     showMsg(e?.message || 'Failed to accept counter', 'error')
   } finally {
@@ -422,7 +413,7 @@ async function acceptCounter(req: ListingRequest) {
   }
 }
 
-async function openCounterEditor(req: ListingRequest) {
+async function openCounterEditor(req: PmListingRequest) {
   modalRequest.value = req
   modalMode.value = 'counter'
   try {
@@ -446,13 +437,12 @@ async function openModalForProperty(propertyId: string) {
   } catch {
     modalProperty.value = { _id: propertyId, name: 'Property' }
   }
-  // Default from agent's rate card if set
   let defaultProposal: FeeProposal | null = null
   try {
     const uid = (auth.user as any)?._id?.toString?.()
     if (uid) {
-      await apStore.fetchList({ userId: uid })
-      const mine = (apStore.list as any[])[0]
+      await pmStore.fetchList({ userId: uid })
+      const mine = (pmStore.list as any[])[0]
       if (mine?.defaultFee) defaultProposal = defaultFeeToProposal(mine.defaultFee)
     }
   } catch {}
@@ -474,11 +464,11 @@ async function submitRequest() {
   modalSubmitting.value = true
   try {
     if (modalMode.value === 'counter' && modalRequest.value) {
-      await alrStore.patch(modalRequest.value._id, { proposal: modalForm.proposal as any })
+      await reqStore.patch(modalRequest.value._id, { proposal: modalForm.proposal as any })
       closeModal()
       showMsg('New proposal sent to landlord.', 'success')
     } else {
-      await alrStore.create({
+      await reqStore.create({
         propertyId: String(modalProperty.value._id),
         proposal: modalForm.proposal as any,
         message: modalForm.message.trim() || undefined

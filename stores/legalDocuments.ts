@@ -4,6 +4,31 @@ import { normalizeFeathersFind } from '../utils/feathersNormalize'
 export const useLegalDocumentsStore = defineStore('legalDocuments', () => {
   const list = ref<any[]>([])
   const isLoading = ref(false)
+  const isSubscribed = ref(false)
+
+  /** Wire CRUD listeners ONCE. Safe to call from every fetch path. */
+  function ensureRealtime() {
+    if (import.meta.server || isSubscribed.value) return
+    isSubscribed.value = true
+    const feathers = (useNuxtApp() as any).$feathers
+    if (!feathers) return
+    const svc = feathers.service('legal-documents')
+    const upsert = (row: any) => {
+      const id = String(row?._id || '')
+      if (!id) return
+      const i = list.value.findIndex((x) => String(x._id) === id)
+      if (i >= 0) list.value[i] = row
+      else list.value.unshift(row)
+    }
+    const onRemoved = (row: any) => {
+      const id = String(row?._id || '')
+      list.value = list.value.filter((x) => String(x._id) !== id)
+    }
+    svc.on('created', upsert)
+    svc.on('patched', upsert)
+    svc.on('updated', upsert)
+    svc.on('removed', onRemoved)
+  }
 
   async function fetchList() {
     isLoading.value = true
@@ -14,6 +39,7 @@ export const useLegalDocumentsStore = defineStore('legalDocuments', () => {
       })
       const norm = normalizeFeathersFind(res)
       list.value = norm.data
+      ensureRealtime()
     } finally {
       isLoading.value = false
     }

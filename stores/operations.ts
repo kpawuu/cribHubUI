@@ -434,6 +434,125 @@ export const usePropertyManagerAssignmentsStore = defineStore('propertyManagerAs
   return { list, total, isLoading, fetchList, create, remove }
 })
 
+/**
+ * usePropertyManagerProfilesStore — public directory of property-manager profiles,
+ * plus CRUD for the signed-in PM.
+ */
+export const usePropertyManagerProfilesStore = defineStore('propertyManagerProfiles', () => {
+  const list = ref<any[]>([])
+  const total = ref(0)
+  const isLoading = ref(false)
+  const isSubscribed = ref(false)
+  async function fetchList(query: Record<string, any> = {}) {
+    isLoading.value = true
+    try {
+      const feathers = useNuxtApp().$feathers as any
+      const res = await feathers.service('property-manager-profiles').find({ query: { $limit: 50, ...query } })
+      const norm = normalizeFeathersFind(res)
+      list.value = norm.data
+      total.value = norm.total
+      wireListRealtime('property-manager-profiles', list, isSubscribed)
+    } finally {
+      isLoading.value = false
+    }
+  }
+  async function get(id: string) {
+    const feathers = useNuxtApp().$feathers as any
+    return await feathers.service('property-manager-profiles').get(id)
+  }
+  async function create(data: Record<string, any>) {
+    const feathers = useNuxtApp().$feathers as any
+    return await feathers.service('property-manager-profiles').create(data)
+  }
+  async function patch(id: string, data: Record<string, any>) {
+    const feathers = useNuxtApp().$feathers as any
+    return await feathers.service('property-manager-profiles').patch(id, data)
+  }
+  async function remove(id: string) {
+    const feathers = useNuxtApp().$feathers as any
+    return await feathers.service('property-manager-profiles').remove(id)
+  }
+  return { list, total, isLoading, fetchList, get, create, patch, remove }
+})
+
+/** Direct landlord ↔ agent/PM (or legacy landlord-tenant) message threads. */
+export const useThreadsStore = defineStore('threads', () => {
+  const list = ref<any[]>([])
+  const total = ref(0)
+  const isLoading = ref(false)
+  const isSubscribed = ref(false)
+  async function fetchList(query: Record<string, any> = {}) {
+    isLoading.value = true
+    try {
+      const feathers = useNuxtApp().$feathers as any
+      const res = await feathers.service('threads').find({
+        query: { $sort: { lastMessageAt: -1, createdAt: -1 }, $limit: 50, ...query }
+      })
+      const norm = normalizeFeathersFind(res)
+      list.value = norm.data
+      total.value = norm.total
+      wireListRealtime('threads', list, isSubscribed)
+    } finally {
+      isLoading.value = false
+    }
+  }
+  async function get(id: string) {
+    const feathers = useNuxtApp().$feathers as any
+    return await feathers.service('threads').get(id)
+  }
+  async function create(data: Record<string, any>) {
+    const feathers = useNuxtApp().$feathers as any
+    return await feathers.service('threads').create(data)
+  }
+  return { list, total, isLoading, fetchList, get, create }
+})
+
+/** Tracks both agent + PM payouts (toggle by `kind`). */
+export const usePayoutsStore = defineStore('payouts', () => {
+  const list = ref<any[]>([])
+  const total = ref(0)
+  const isLoading = ref(false)
+  const isSubscribed = ref(false)
+  const kind = ref<'agent' | 'pm'>('agent')
+  function svcPath() {
+    return kind.value === 'agent' ? 'agent-payouts' : 'pm-payouts'
+  }
+  async function fetchList(k: 'agent' | 'pm', query: Record<string, any> = {}) {
+    kind.value = k
+    isSubscribed.value = false
+    isLoading.value = true
+    try {
+      const feathers = useNuxtApp().$feathers as any
+      const res = await feathers.service(svcPath()).find({
+        query: { $sort: { createdAt: -1 }, $limit: 100, ...query }
+      })
+      const norm = normalizeFeathersFind(res)
+      list.value = norm.data
+      total.value = norm.total
+      wireListRealtime(svcPath(), list, isSubscribed)
+    } finally {
+      isLoading.value = false
+    }
+  }
+  async function create(data: Record<string, any>) {
+    const feathers = useNuxtApp().$feathers as any
+    return await feathers.service(svcPath()).create(data)
+  }
+  async function markPaid(id: string, note?: string) {
+    const feathers = useNuxtApp().$feathers as any
+    return await feathers.service(svcPath()).patch(id, {
+      status: 'paid',
+      paidAt: new Date().toISOString(),
+      ...(note ? { paidNote: note } : {})
+    })
+  }
+  async function cancel(id: string) {
+    const feathers = useNuxtApp().$feathers as any
+    return await feathers.service(svcPath()).patch(id, { status: 'cancelled' })
+  }
+  return { list, total, isLoading, kind, fetchList, create, markPaid, cancel }
+})
+
 export const usePropertyManagerListingRequestsStore = defineStore('propertyManagerListingRequests', () => {
   const list = ref<any[]>([])
   const total = ref(0)
@@ -469,78 +588,128 @@ export const usePropertyManagerListingRequestsStore = defineStore('propertyManag
 
 /**
  * useChatMessagesStore — fetches and maintains messages for ONE active thread.
- * Call `openThread(inquiryId)` to load messages and start real-time listening.
- * Call `closeThread()` to stop listening and clear state.
+ * Supports both modern `threadId` and legacy `inquiryId` references.
  */
 export const useChatMessagesStore = defineStore('chatMessages', () => {
   const messages = ref<any[]>([])
   const isLoading = ref(false)
   const isSending = ref(false)
+  const activeThreadId = ref<string | null>(null)
   const activeInquiryId = ref<string | null>(null)
 
-  // Socket cleanup refs stored as plain values (not reactive)
   let _svc: any = null
   let _onCreate: ((row: any) => void) | null = null
+  let _onUpsert: ((row: any) => void) | null = null
+  let _onRemove: ((row: any) => void) | null = null
 
   function _teardown() {
-    if (_svc && _onCreate) {
+    if (_svc) {
       try {
-        _svc.off('created', _onCreate)
-        _svc.off('patched', _onCreate)
-        _svc.off('updated', _onCreate)
+        if (_onCreate) _svc.off('created', _onCreate)
+        if (_onUpsert) {
+          _svc.off('patched', _onUpsert)
+          _svc.off('updated', _onUpsert)
+        }
+        if (_onRemove) _svc.off('removed', _onRemove)
       } catch {}
     }
     _svc = null
     _onCreate = null
+    _onUpsert = null
+    _onRemove = null
   }
 
-  async function openThread(inquiryId: string) {
-    if (activeInquiryId.value === inquiryId) return
+  async function open(opts: { threadId?: string; inquiryId?: string }) {
+    const tid = opts.threadId ? String(opts.threadId) : null
+    const iid = opts.inquiryId ? String(opts.inquiryId) : null
+    if (!tid && !iid) return
+    if ((tid && activeThreadId.value === tid) || (iid && activeInquiryId.value === iid && !tid)) return
     _teardown()
-    activeInquiryId.value = inquiryId
+    activeThreadId.value = tid
+    activeInquiryId.value = iid
     messages.value = []
     isLoading.value = true
     try {
       const feathers = useNuxtApp().$feathers as any
-      const res = await feathers.service('chat-messages').find({
-        query: { inquiryId, $sort: { createdAt: 1 }, $limit: 200 }
-      })
+      const query: Record<string, any> = { $sort: { createdAt: 1 }, $limit: 200 }
+      if (tid) query.threadId = tid
+      else if (iid) query.inquiryId = iid
+      const res = await feathers.service('chat-messages').find({ query })
       const norm = normalizeFeathersFind(res)
       messages.value = norm.data
 
-      // Real-time: append new messages for this thread
       _svc = feathers.service('chat-messages')
+      const matches = (row: any) => {
+        const matchesThread = tid && String(row?.threadId) === tid
+        const matchesInquiry = iid && String(row?.inquiryId) === iid
+        return Boolean(matchesThread || matchesInquiry)
+      }
       _onCreate = (row: any) => {
-        if (String(row?.inquiryId) !== String(inquiryId)) return
+        if (!matches(row)) return
         const rowId = String(row?._id || '')
         const exists = messages.value.some((m) => String(m._id) === rowId)
         if (!exists) messages.value.push(row)
       }
+      // Read receipts, edits, and any future "soft delete via patch" all arrive
+      // here. We upsert in place so the message bubble updates without scroll jump.
+      _onUpsert = (row: any) => {
+        if (!matches(row)) return
+        const rowId = String(row?._id || '')
+        const i = messages.value.findIndex((m) => String(m._id) === rowId)
+        if (i >= 0) messages.value[i] = row
+        else messages.value.push(row)
+      }
+      _onRemove = (row: any) => {
+        const rowId = String(row?._id || '')
+        if (!rowId) return
+        messages.value = messages.value.filter((m) => String(m._id) !== rowId)
+      }
       _svc.on('created', _onCreate)
+      _svc.on('patched', _onUpsert)
+      _svc.on('updated', _onUpsert)
+      _svc.on('removed', _onRemove)
     } finally {
       isLoading.value = false
     }
   }
 
-  function closeThread() {
+  /** Backward-compat alias used by `pages/messages.vue`. */
+  async function openThread(inquiryId: string) {
+    await open({ inquiryId })
+  }
+
+  function close() {
     _teardown()
+    activeThreadId.value = null
     activeInquiryId.value = null
     messages.value = []
   }
 
   async function sendMessage(body: string) {
-    if (!activeInquiryId.value || !body.trim()) return
+    if (!body.trim()) return
+    if (!activeThreadId.value && !activeInquiryId.value) return
     isSending.value = true
     try {
       const feathers = useNuxtApp().$feathers as any
-      await feathers.service('chat-messages').create({
-        inquiryId: activeInquiryId.value,
-        body: body.trim()
-      })
+      const payload: Record<string, any> = { body: body.trim() }
+      if (activeThreadId.value) payload.threadId = activeThreadId.value
+      else if (activeInquiryId.value) payload.inquiryId = activeInquiryId.value
+      await feathers.service('chat-messages').create(payload)
     } finally {
       isSending.value = false
     }
   }
 
-  return { messages, isLoading, isSending, activeInquiryId, openThread, closeThread, sendMessage }
+  return {
+    messages,
+    isLoading,
+    isSending,
+    activeThreadId,
+    activeInquiryId,
+    open,
+    openThread,
+    closeThread: close,
+    close,
+    sendMessage
+  }
 })

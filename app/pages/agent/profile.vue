@@ -140,6 +140,46 @@
             </div>
           </div>
         </div>
+
+        <!-- Default rate card -->
+        <div class="compact-card rounded bg-white p-4">
+          <h2 class="mb-3 flex items-center gap-2 border-b border-gray-100 pb-2.5 text-sm font-semibold text-gray-900">
+            <i class="las la-tag text-base text-gray-500"></i> Default rate card
+            <span class="ml-1 text-[10px] font-normal text-gray-400">
+              (pre-fills your fee on every listing request)
+            </span>
+          </h2>
+          <UiFeeProposalEditor v-model="form.defaultFee" />
+        </div>
+
+        <!-- Verification documents -->
+        <div class="compact-card rounded bg-white p-4">
+          <h2 class="mb-3 flex items-center gap-2 border-b border-gray-100 pb-2.5 text-sm font-semibold text-gray-900">
+            <i class="las la-shield-alt text-base text-gray-500"></i> Verification documents
+            <span
+              v-if="profile?.verified"
+              class="ml-auto inline-flex items-center gap-1 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-emerald-800"
+            >
+              <i class="las la-check-circle"></i> Verified
+            </span>
+          </h2>
+          <p class="mb-3 text-xs text-gray-500">
+            Upload your agent license, business registration, ID, or portfolio references.
+            Landlords and the CribHub team review these to verify your profile.
+          </p>
+          <p v-if="!profile" class="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <i class="las la-info-circle mr-1"></i>Save your profile first to enable document uploads.
+          </p>
+          <UiDocumentsUploader
+            v-else
+            entity-type="agent-profiles"
+            :entity-id="String(profile._id)"
+            :files="verificationFiles"
+            label="verification documents"
+            purpose="verification"
+            @update:files="verificationFiles = $event"
+          />
+        </div>
       </div>
 
       <!-- Right: avatar + stats + save + ref -->
@@ -329,6 +369,8 @@ const feathers = useNuxtApp().$feathers as any
 const config = useRuntimeConfig()
 
 // ── Types ──────────────────────────────────────────────────────────────────
+import type { FeeProposal } from '../../composables/useFeeProposal'
+
 interface AgentProfile {
   _id: string
   userId: string
@@ -344,6 +386,7 @@ interface AgentProfile {
   listingsCount?: number
   responseTimeMinutes?: number
   verified?: boolean
+  defaultFee?: FeeProposal
 }
 
 // ── State ──────────────────────────────────────────────────────────────────
@@ -354,6 +397,7 @@ const profile = ref<AgentProfile | null>(null)
 const assignedProperties = ref<any[]>([])
 const successMsg = ref<string | null>(null)
 const errorMsg = ref<string | null>(null)
+const verificationFiles = ref<any[]>([])
 
 const form = reactive({
   displayName: '',
@@ -365,6 +409,7 @@ const form = reactive({
   avatarUrl: '',
   listingsCount: undefined as number | undefined,
   responseTimeMinutes: undefined as number | undefined,
+  defaultFee: null as FeeProposal | null,
 })
 
 const regionsRaw = ref('')
@@ -452,11 +497,29 @@ async function loadProfile() {
     if (found) {
       profile.value = found
       populateForm(found)
+      await loadVerificationFiles(String(found._id))
     }
   } catch (e: any) {
     errorMsg.value = e?.message || 'Failed to load profile'
   } finally {
     isLoading.value = false
+  }
+}
+
+async function loadVerificationFiles(profileId: string) {
+  try {
+    const res = await feathers.service('files').find({
+      query: {
+        entityType: 'agent-profiles',
+        entityId: profileId,
+        $sort: { createdAt: -1 },
+        $limit: 50,
+      },
+    })
+    const rows = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : []
+    verificationFiles.value = rows
+  } catch {
+    verificationFiles.value = []
   }
 }
 
@@ -501,13 +564,14 @@ function populateForm(p: AgentProfile) {
   form.avatarUrl = p.avatarUrl ?? ''
   form.listingsCount = p.listingsCount
   form.responseTimeMinutes = p.responseTimeMinutes
+  form.defaultFee = p.defaultFee ?? null
   regionsRaw.value = (p.regions ?? []).join(', ')
   languagesRaw.value = (p.languages ?? []).join(', ')
 }
 
 function buildPayload() {
   const splitTags = (s: string) => s.split(',').map((x) => x.trim()).filter(Boolean)
-  return {
+  const payload: Record<string, any> = {
     displayName: form.displayName.trim(),
     agency: form.agency.trim() || undefined,
     phone: form.phone.trim() || undefined,
@@ -520,6 +584,14 @@ function buildPayload() {
     listingsCount: form.listingsCount ?? undefined,
     responseTimeMinutes: form.responseTimeMinutes ?? undefined,
   }
+  if (form.defaultFee && (form.defaultFee.rent || form.defaultFee.sale)) {
+    const rc: any = {}
+    if (form.defaultFee.rent) rc.rent = form.defaultFee.rent
+    if (form.defaultFee.sale) rc.sale = form.defaultFee.sale
+    if (form.defaultFee.notes) rc.notes = form.defaultFee.notes
+    payload.defaultFee = rc
+  }
+  return payload
 }
 
 async function onSave() {
@@ -537,6 +609,7 @@ async function onSave() {
       const created = await agentProfilesStore.create(payload)
       profile.value = created
       populateForm(created)
+      await loadVerificationFiles(String((created as any)._id))
       successMsg.value = 'Profile created! You are now visible on listings.'
     }
   } catch (e: any) {

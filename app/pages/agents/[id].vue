@@ -921,4 +921,48 @@ watch(id, async () => {
   await fetchAgent()
   await Promise.all([fetchProperties(), fetchRatings()])
 })
+
+/* Realtime: keep ratings list + profile aggregate in sync.
+ * Hidden reviews are dropped for non-admin viewers (mirrors the server-side `hideModeratedFromPublic` after-find hook). */
+if (import.meta.client) {
+  const isAdmin = computed(() => Array.isArray(auth.roles) && auth.roles.includes('admin'))
+  const myUserId = computed(() => String((auth.user as any)?._id || ''))
+  const matchesProfile = (row: any) => row && String(row.agentProfileId) === String(id.value)
+  const visibleToMe = (row: any) =>
+    !row?.hidden || isAdmin.value || (myUserId.value && String(row.userId) === myUserId.value)
+
+  const stopRatingRealtime = useFeathersRealtime<any>('agent-ratings', {
+    onCreated: (row) => {
+      if (!matchesProfile(row) || !visibleToMe(row)) return
+      if (!ratings.value.some((r: any) => String(r._id) === String(row._id))) ratings.value.unshift(row)
+      if (myUserId.value && String(row.userId) === myUserId.value) myRating.value = row
+    },
+    onPatched: (row) => {
+      if (!matchesProfile(row)) return
+      const idx = ratings.value.findIndex((r: any) => String(r._id) === String(row._id))
+      if (visibleToMe(row)) {
+        if (idx >= 0) ratings.value[idx] = row
+        else ratings.value.unshift(row)
+      } else if (idx >= 0) {
+        ratings.value.splice(idx, 1)
+      }
+      if (myRating.value && String(myRating.value._id) === String(row._id)) myRating.value = row
+    },
+    onUpdated: (row) => {
+      if (!matchesProfile(row)) return
+      const idx = ratings.value.findIndex((r: any) => String(r._id) === String(row._id))
+      if (idx >= 0) ratings.value[idx] = row
+    },
+    onRemoved: (row) => {
+      if (!matchesProfile(row)) return
+      ratings.value = ratings.value.filter((r: any) => String(r._id) !== String(row._id))
+      if (myRating.value && String(myRating.value._id) === String(row._id)) myRating.value = null
+    }
+  })
+  const stopProfileRealtime = useFeathersRealtime<any>('agent-profiles', {
+    onPatched: (row) => { if (row && String(row._id) === String(id.value)) agent.value = row },
+    onUpdated: (row) => { if (row && String(row._id) === String(id.value)) agent.value = row }
+  })
+  onScopeDispose(() => { stopRatingRealtime(); stopProfileRealtime() })
+}
 </script>

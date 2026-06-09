@@ -206,6 +206,49 @@
                 <i class="las la-file-alt w-5 shrink-0 text-center text-lg leading-none"></i>
                 <span class="min-w-0 flex-1 truncate">Unit Applications</span>
               </NuxtLink>
+              <NuxtLink
+                to="/agent/payouts"
+                class="flex min-w-0 items-center gap-3 rounded px-2 py-2 text-sm font-medium transition"
+                :class="isActive('/agent/payouts') ? 'bg-primary-50 text-primary-700' : 'text-gray-700 hover:bg-gray-50'"
+                @click="mobileSidebarOpen = false"
+              >
+                <i class="las la-coins w-5 shrink-0 text-center text-lg leading-none"></i>
+                <span class="min-w-0 flex-1 truncate">Commissions</span>
+              </NuxtLink>
+            </nav>
+          </template>
+
+          <!-- Property manager nav -->
+          <template v-if="auth.hasRole('property_manager')">
+            <p class="mb-1 mt-2 px-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Property Manager</p>
+            <nav class="mb-4 space-y-0.5">
+              <NuxtLink
+                to="/pm/profile"
+                class="flex min-w-0 items-center gap-3 rounded px-2 py-2 text-sm font-medium transition"
+                :class="isActive('/pm/profile') ? 'bg-primary-50 text-primary-700' : 'text-gray-700 hover:bg-gray-50'"
+                @click="mobileSidebarOpen = false"
+              >
+                <i class="las la-user-cog w-5 shrink-0 text-center text-lg leading-none"></i>
+                <span class="min-w-0 flex-1 truncate">PM Profile</span>
+              </NuxtLink>
+              <NuxtLink
+                to="/pm/listings"
+                class="flex min-w-0 items-center gap-3 rounded px-2 py-2 text-sm font-medium transition"
+                :class="isActive('/pm/listings') ? 'bg-primary-50 text-primary-700' : 'text-gray-700 hover:bg-gray-50'"
+                @click="mobileSidebarOpen = false"
+              >
+                <i class="las la-tasks w-5 shrink-0 text-center text-lg leading-none"></i>
+                <span class="min-w-0 flex-1 truncate">Management Requests</span>
+              </NuxtLink>
+              <NuxtLink
+                to="/pm/payouts"
+                class="flex min-w-0 items-center gap-3 rounded px-2 py-2 text-sm font-medium transition"
+                :class="isActive('/pm/payouts') ? 'bg-primary-50 text-primary-700' : 'text-gray-700 hover:bg-gray-50'"
+                @click="mobileSidebarOpen = false"
+              >
+                <i class="las la-coins w-5 shrink-0 text-center text-lg leading-none"></i>
+                <span class="min-w-0 flex-1 truncate">Management Fees</span>
+              </NuxtLink>
             </nav>
           </template>
 
@@ -352,7 +395,12 @@ const navLandlordBase: SidebarNavItem[] = [
 const navLandlord = computed((): SidebarNavItem[] => {
   const items = [...navLandlordBase]
   if (auth.hasRole('admin')) {
-    items.push({ to: '/verification/role-requests', label: 'Role requests (admin)', icon: 'las la-user-shield' })
+    items.push(
+      { to: '/verification/role-requests', label: 'Role requests (admin)', icon: 'las la-user-shield' },
+      { to: '/admin/payouts', label: 'Payouts moderation', icon: 'las la-coins' },
+      { to: '/admin/ratings', label: 'Ratings moderation', icon: 'las la-comments' },
+      { to: '/admin/migrations', label: 'Data migrations', icon: 'las la-database' }
+    )
   }
   return items
 })

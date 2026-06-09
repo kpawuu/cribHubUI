@@ -305,11 +305,11 @@ const statsCards = computed(() => {
         iconColor: 'text-blue-600'
       },
       {
-        label: 'Units',
-        value: sv.units ?? '—',
-        icon: 'las la-door-open',
-        iconBg: 'bg-emerald-50',
-        iconColor: 'text-emerald-600'
+        label: 'Open requests',
+        value: sv.pendingRequests ?? '—',
+        icon: 'las la-paper-plane',
+        iconBg: 'bg-indigo-50',
+        iconColor: 'text-indigo-600'
       },
       {
         label: 'Applications',
@@ -319,9 +319,42 @@ const statsCards = computed(() => {
         iconColor: 'text-violet-600'
       },
       {
-        label: 'Open inquiries',
-        value: sv.openInquiries ?? '—',
-        icon: 'las la-inbox',
+        label: 'Payouts due',
+        value: sv.payoutsDue ?? '—',
+        icon: 'las la-coins',
+        iconBg: 'bg-amber-50',
+        iconColor: 'text-amber-600'
+      }
+    ]
+  }
+
+  if (role === 'property_manager') {
+    return [
+      {
+        label: 'Managed properties',
+        value: sv.assignedProperties ?? '—',
+        icon: 'las la-city',
+        iconBg: 'bg-blue-50',
+        iconColor: 'text-blue-600'
+      },
+      {
+        label: 'Open requests',
+        value: sv.pendingRequests ?? '—',
+        icon: 'las la-paper-plane',
+        iconBg: 'bg-indigo-50',
+        iconColor: 'text-indigo-600'
+      },
+      {
+        label: 'Maintenance',
+        value: sv.maintenanceRequests ?? '—',
+        icon: 'las la-tools',
+        iconBg: 'bg-violet-50',
+        iconColor: 'text-violet-600'
+      },
+      {
+        label: 'Fees due',
+        value: sv.payoutsDue ?? '—',
+        icon: 'las la-coins',
         iconBg: 'bg-amber-50',
         iconColor: 'text-amber-600'
       }
@@ -352,14 +385,39 @@ const statsCards = computed(() => {
   ]
 })
 
-const landlordLinks = [
-  { to: '/landlord/properties', label: 'My properties', icon: 'las la-building' },
-  { to: '/landlord/review-applications', label: 'Review applications', icon: 'las la-clipboard-check' },
-  { to: '/landlord/maintenance', label: 'Maintenance', icon: 'las la-tools' },
-  { to: '/landlord/payments', label: 'Payments', icon: 'las la-wallet' },
-  { to: '/landlord/notices', label: 'Notices & SMS', icon: 'las la-bullhorn' },
-  { to: '/landlord/communications', label: 'Portfolio updates', icon: 'las la-stream' },
-]
+const landlordLinks = computed(() => {
+  const role = (s.value as any).role || ''
+  if (role === 'agent') {
+    return [
+      { to: '/agent/profile', label: 'My agent profile', icon: 'las la-id-badge' },
+      { to: '/agent/listings', label: 'My listing requests', icon: 'las la-paper-plane' },
+      { to: '/agent/payouts', label: 'My commissions', icon: 'las la-coins' },
+      { to: '/landlord/properties', label: 'Assigned properties', icon: 'las la-building' },
+      { to: '/listings', label: 'Discover listings', icon: 'las la-search' },
+      { to: '/messages', label: 'Messages', icon: 'las la-comment-dots' }
+    ]
+  }
+  if (role === 'property_manager') {
+    return [
+      { to: '/pm/profile', label: 'My manager profile', icon: 'las la-user-cog' },
+      { to: '/pm/listings', label: 'My management requests', icon: 'las la-paper-plane' },
+      { to: '/pm/payouts', label: 'My management fees', icon: 'las la-coins' },
+      { to: '/landlord/properties', label: 'Managed properties', icon: 'las la-building' },
+      { to: '/landlord/maintenance', label: 'Maintenance', icon: 'las la-tools' },
+      { to: '/listings', label: 'Discover listings', icon: 'las la-search' },
+      { to: '/messages', label: 'Messages', icon: 'las la-comment-dots' }
+    ]
+  }
+  return [
+    { to: '/landlord/properties', label: 'My properties', icon: 'las la-building' },
+    { to: '/landlord/review-applications', label: 'Review applications', icon: 'las la-clipboard-check' },
+    { to: '/landlord/maintenance', label: 'Maintenance', icon: 'las la-tools' },
+    { to: '/landlord/payments', label: 'Payments', icon: 'las la-wallet' },
+    { to: '/landlord/notices', label: 'Notices & SMS', icon: 'las la-bullhorn' },
+    { to: '/landlord/communications', label: 'Portfolio updates', icon: 'las la-stream' },
+    { to: '/messages', label: 'Messages', icon: 'las la-comment-dots' }
+  ]
+})
 
 function notifIcon(category: string) {
   const m: Record<string, string> = {

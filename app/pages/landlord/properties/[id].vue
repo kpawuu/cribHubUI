@@ -37,6 +37,35 @@
       <i class="las la-check-circle mt-0.5 text-emerald-600"></i><span>Saved successfully.</span>
     </div>
 
+    <!-- Role context banner for PM / Agent viewing a landlord's property -->
+    <div
+      v-if="roleContextBanner"
+      class="mb-4 flex flex-wrap items-start gap-3 rounded border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-900"
+    >
+      <i :class="`${roleContextBanner.icon} mt-0.5 text-base text-primary-600`"></i>
+      <div class="flex-1 min-w-0">
+        <div class="font-semibold">{{ roleContextBanner.title }}</div>
+        <div class="text-xs text-primary-800/90">{{ roleContextBanner.body }}</div>
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <button
+          v-if="roleContextBanner.messageThreadId || roleContextBanner.openMessageHandler"
+          type="button"
+          class="inline-flex items-center gap-1 rounded bg-white px-3 py-1.5 text-xs font-semibold text-primary-700 ring-1 ring-primary-200 transition hover:bg-primary-100"
+          @click="openRoleContextMessage"
+        >
+          <i class="las la-comment-dots"></i> Message landlord
+        </button>
+        <NuxtLink
+          v-if="roleContextBanner.profileLink"
+          :to="roleContextBanner.profileLink"
+          class="inline-flex items-center gap-1 rounded bg-white px-3 py-1.5 text-xs font-semibold text-primary-700 ring-1 ring-primary-200 transition hover:bg-primary-100"
+        >
+          <i class="las la-user-cog"></i> My profile
+        </NuxtLink>
+      </div>
+    </div>
+
     <div v-if="properties.isLoading && !properties.selected" class="space-y-4">
       <div class="h-48 animate-pulse rounded border border-gray-200 bg-white" />
       <div class="h-48 animate-pulse rounded border border-gray-200 bg-white" />
@@ -442,19 +471,30 @@
                       </p>
                       <div class="mt-1.5 flex flex-wrap gap-1.5">
                         <span
-                          v-if="r.commissionPercent != null"
+                          v-if="r.status === 'countered'"
+                          class="rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-orange-800"
+                        >Countered</span>
+                        <span
+                          v-if="r.commissionPercent != null && !r.proposal"
                           class="rounded bg-primary-50 px-2 py-0.5 text-xs font-semibold text-primary-800"
                         >
                           <i class="las la-percent"></i>{{ r.commissionPercent }}% proposed
                         </span>
-                        <span
-                          v-if="r.message"
-                          class="inline-flex max-w-[240px] items-center gap-1 truncate rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
-                        >
-                          <i class="las la-comment-dots shrink-0 text-gray-400"></i>
-                          <span class="truncate">{{ r.message }}</span>
-                        </span>
                       </div>
+                      <div class="mt-2 grid gap-1.5 sm:grid-cols-2">
+                        <div v-if="r.proposal" class="rounded border border-primary-100 bg-primary-50/40 px-2.5 py-1.5 text-xs">
+                          <p class="font-semibold text-primary-800"><i class="las la-arrow-down text-primary-600"></i> Their proposal</p>
+                          <p class="mt-0.5 text-primary-700">{{ summarizeProposal(r.proposal) }}</p>
+                        </div>
+                        <div v-if="r.counter" class="rounded border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs">
+                          <p class="font-semibold text-amber-800"><i class="las la-arrow-up text-amber-600"></i> Your counter</p>
+                          <p class="mt-0.5 text-amber-800">{{ summarizeProposal(r.counter) }}</p>
+                        </div>
+                      </div>
+                      <p
+                        v-if="r.message"
+                        class="mt-2 rounded border border-gray-100 bg-white px-2.5 py-1.5 text-xs italic text-gray-700"
+                      >"{{ r.message }}"</p>
                       <button
                         type="button"
                         class="mt-2 text-xs font-semibold text-primary-600 hover:text-primary-700"
@@ -464,7 +504,7 @@
                       </button>
                     </div>
                   </div>
-                  <div class="flex shrink-0 gap-2 sm:w-28 sm:flex-col">
+                  <div class="flex shrink-0 flex-wrap gap-2 sm:w-32 sm:flex-col">
                     <button
                       type="button"
                       class="flex-1 rounded bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 sm:flex-none"
@@ -472,6 +512,21 @@
                       @click="decideAgentRequest(r, 'accepted')"
                     >
                       <i class="las la-check mr-0.5"></i> Accept
+                    </button>
+                    <button
+                      type="button"
+                      class="flex-1 rounded border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-50 sm:flex-none"
+                      :disabled="requestActionId === String(r._id)"
+                      @click="openCounterEditor('agent', r)"
+                    >
+                      <i class="las la-handshake mr-0.5"></i> Counter
+                    </button>
+                    <button
+                      type="button"
+                      class="flex-1 rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 sm:flex-none"
+                      @click="startThreadFromAgentRequest(r)"
+                    >
+                      <i class="las la-comment mr-0.5"></i> Message
                     </button>
                     <button
                       type="button"
@@ -587,94 +642,273 @@
 
       <!-- ── TAB: Property managers ── -->
       <div v-show="activeTab === 'pm'" class="space-y-4">
-        <div v-if="pmTabError" class="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">{{ pmTabError }}</div>
-
-        <div class="compact-card rounded bg-white p-5">
-          <h2 class="mb-3 text-sm font-semibold text-gray-900">Incoming manager requests</h2>
-          <p class="mb-3 text-xs text-gray-500">
-            Approved property managers can ask to help run this listing. Accepting creates their access for this property only. Role approval itself is done by an administrator.
-          </p>
-          <div v-if="pmTabLoading" class="text-sm text-gray-500">Loading…</div>
-          <ul v-else-if="!incomingPmRequests.length" class="text-sm text-gray-500">No pending requests.</ul>
-          <ul v-else class="space-y-2">
-            <li
-              v-for="r in incomingPmRequests"
-              :key="String(r._id)"
-              class="flex flex-wrap items-center justify-between gap-2 rounded border border-gray-100 bg-gray-50 px-3 py-2 text-sm"
-            >
-              <div class="min-w-0">
-                <p class="font-medium text-gray-900">Manager {{ r.managerUserId }}</p>
-                <p v-if="r.message" class="mt-1 text-xs text-gray-600 line-clamp-2">{{ r.message }}</p>
-              </div>
-              <div class="flex shrink-0 gap-2">
-                <button
-                  type="button"
-                  class="rounded bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-                  :disabled="pmRequestActionId === String(r._id)"
-                  @click="decidePmRequest(r, 'accepted')"
-                >
-                  Accept
-                </button>
-                <button
-                  type="button"
-                  class="rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                  :disabled="pmRequestActionId === String(r._id)"
-                  @click="decidePmRequest(r, 'rejected')"
-                >
-                  Decline
-                </button>
-              </div>
-            </li>
-          </ul>
+        <div v-if="pmTabError" class="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          <i class="las la-exclamation-circle mr-1.5"></i>{{ pmTabError }}
         </div>
 
-        <div class="compact-card rounded bg-white p-5">
-          <h2 class="mb-3 text-sm font-semibold text-gray-900">Assigned property managers</h2>
-          <ul v-if="!pmAssignments.length" class="text-sm text-gray-500">No property managers assigned yet.</ul>
-          <ul v-else class="space-y-2">
-            <li
-              v-for="a in pmAssignments"
-              :key="String(a._id)"
-              class="flex flex-wrap items-center justify-between gap-2 rounded border border-gray-100 px-3 py-2 text-sm"
+        <!-- Incoming requests -->
+        <div class="compact-card rounded bg-white">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3">
+            <div class="flex items-center gap-2">
+              <i class="las la-inbox text-sm text-primary-600"></i>
+              <h2 class="text-sm font-semibold text-gray-900">Incoming manager requests</h2>
+            </div>
+            <span
+              v-if="!pmTabLoading && incomingPmRequests.length"
+              class="inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800"
             >
-              <div>
-                <p class="font-medium text-gray-900">{{ a.managerUserId }}</p>
-                <p v-if="a.assignedBy" class="text-xs text-gray-500">Assigned by {{ a.assignedBy }}</p>
-              </div>
-              <button
-                type="button"
-                class="rounded border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50"
-                :disabled="pmRemovingAssignmentId === String(a._id)"
-                @click="removePmAssignment(a)"
+              <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500"></span>
+              {{ incomingPmRequests.length }} open
+            </span>
+          </div>
+          <div class="p-4">
+            <p class="mb-3 text-xs text-gray-500">
+              Approved property managers asking to run this listing. Review their profile, accept, counter their terms, or decline.
+            </p>
+            <div v-if="pmTabLoading" class="flex items-center gap-2 py-6 text-sm text-gray-500">
+              <i class="las la-spinner animate-spin text-primary-600"></i> Loading manager activity…
+            </div>
+            <div v-else-if="!incomingPmRequests.length" class="rounded border border-dashed border-gray-200 bg-gray-50 py-8 text-center">
+              <i class="las la-user-clock mb-1.5 block text-2xl text-gray-300"></i>
+              <p class="text-sm font-medium text-gray-700">No open requests</p>
+              <p class="mt-0.5 text-xs text-gray-500">When a property manager requests this listing, their card will appear here.</p>
+            </div>
+            <ul v-else class="space-y-2">
+              <li
+                v-for="r in incomingPmRequests"
+                :key="String(r._id)"
+                class="rounded border border-gray-100 bg-gray-50 px-4 py-3"
               >
-                Remove
-              </button>
-            </li>
-          </ul>
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div class="flex min-w-0 gap-3">
+                    <button
+                      type="button"
+                      class="shrink-0"
+                      :title="'View ' + (getPmProfile(r.managerUserId)?.displayName || 'manager') + ' profile'"
+                      @click="openPmDetail(String(r.managerUserId), { request: r })"
+                    >
+                      <img
+                        v-if="getPmProfile(r.managerUserId)?.avatarUrl"
+                        :src="getPmProfile(r.managerUserId).avatarUrl"
+                        :alt="getPmProfile(r.managerUserId)?.displayName || 'Manager'"
+                        class="h-12 w-12 rounded object-cover"
+                      />
+                      <span v-else class="flex h-12 w-12 items-center justify-center rounded bg-gray-200 text-gray-400">
+                        <i class="las la-user-cog text-2xl"></i>
+                      </span>
+                    </button>
+                    <div class="min-w-0">
+                      <div class="flex flex-wrap items-center gap-1.5">
+                        <p class="text-sm font-semibold text-gray-900">
+                          {{ getPmProfile(r.managerUserId)?.displayName || 'Property manager' }}
+                        </p>
+                        <span
+                          v-if="getPmProfile(r.managerUserId)?.verified"
+                          class="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-emerald-800"
+                        >
+                          <i class="las la-check-circle"></i> Verified
+                        </span>
+                        <span
+                          v-if="r.status === 'countered'"
+                          class="rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-orange-800"
+                        >Countered</span>
+                      </div>
+                      <p v-if="getPmProfile(r.managerUserId)?.companyName" class="text-xs text-gray-500">
+                        {{ getPmProfile(r.managerUserId).companyName }}
+                      </p>
+                      <div class="mt-2 grid gap-1.5 sm:grid-cols-2">
+                        <div v-if="r.proposal" class="rounded border border-primary-100 bg-primary-50/40 px-2.5 py-1.5 text-xs">
+                          <p class="font-semibold text-primary-800"><i class="las la-arrow-down text-primary-600"></i> Their proposal</p>
+                          <p class="mt-0.5 text-primary-700">{{ summarizeProposal(r.proposal) }}</p>
+                        </div>
+                        <div v-if="r.counter" class="rounded border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs">
+                          <p class="font-semibold text-amber-800"><i class="las la-arrow-up text-amber-600"></i> Your counter</p>
+                          <p class="mt-0.5 text-amber-800">{{ summarizeProposal(r.counter) }}</p>
+                        </div>
+                      </div>
+                      <p
+                        v-if="r.message"
+                        class="mt-2 rounded border border-gray-100 bg-white px-2.5 py-1.5 text-xs italic text-gray-700"
+                      >"{{ r.message }}"</p>
+                      <button
+                        type="button"
+                        class="mt-2 text-xs font-semibold text-primary-600 hover:text-primary-700"
+                        @click="openPmDetail(String(r.managerUserId), { request: r })"
+                      >
+                        View full profile <i class="las la-arrow-right"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="flex shrink-0 flex-wrap gap-2 sm:w-32 sm:flex-col">
+                    <button
+                      type="button"
+                      class="flex-1 rounded bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 sm:flex-none"
+                      :disabled="pmRequestActionId === String(r._id)"
+                      @click="decidePmRequest(r, 'accepted')"
+                    >
+                      <i class="las la-check mr-0.5"></i> Accept
+                    </button>
+                    <button
+                      type="button"
+                      class="flex-1 rounded border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-50 sm:flex-none"
+                      :disabled="pmRequestActionId === String(r._id)"
+                      @click="openCounterEditor('pm', r)"
+                    >
+                      <i class="las la-handshake mr-0.5"></i> Counter
+                    </button>
+                    <button
+                      type="button"
+                      class="flex-1 rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 sm:flex-none"
+                      @click="startThreadFromPmRequest(r)"
+                    >
+                      <i class="las la-comment mr-0.5"></i> Message
+                    </button>
+                    <button
+                      type="button"
+                      class="flex-1 rounded border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 sm:flex-none"
+                      :disabled="pmRequestActionId === String(r._id)"
+                      @click="decidePmRequest(r, 'rejected')"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              </li>
+            </ul>
+          </div>
         </div>
 
-        <div class="compact-card rounded bg-white p-5">
-          <h2 class="mb-3 text-sm font-semibold text-gray-900">Assign a property manager</h2>
-          <p class="mb-3 text-xs text-gray-500">
-            Only users who already have the property manager role (approved by an admin) can be added. Pick their account ID from the list, or ask them to send a “request to manage” from the public listing.
-          </p>
-          <div class="grid gap-3 sm:max-w-lg">
+        <!-- Assigned managers -->
+        <div class="compact-card rounded bg-white">
+          <div class="flex items-center gap-2 border-b border-gray-100 px-4 py-3">
+            <i class="las la-user-cog text-sm text-gray-600"></i>
+            <h2 class="text-sm font-semibold text-gray-900">Assigned property managers</h2>
+          </div>
+          <div class="p-4">
+            <p class="mb-3 text-xs text-gray-500">Approved property managers actively running this listing.</p>
+            <div
+              v-if="!pmAssignments.length"
+              class="rounded border border-dashed border-gray-200 bg-gray-50 py-6 text-center text-sm text-gray-500"
+            >
+              No property managers assigned yet.
+            </div>
+            <ul v-else class="space-y-2">
+              <li
+                v-for="a in pmAssignments"
+                :key="String(a._id)"
+                class="flex flex-wrap items-center justify-between gap-3 rounded border border-gray-100 bg-gray-50 px-4 py-3"
+              >
+                <div class="flex min-w-0 items-center gap-3">
+                  <img
+                    v-if="getPmProfile(a.managerUserId)?.avatarUrl"
+                    :src="getPmProfile(a.managerUserId).avatarUrl"
+                    :alt="getPmProfile(a.managerUserId)?.displayName || 'Manager'"
+                    class="h-10 w-10 shrink-0 rounded object-cover"
+                  />
+                  <span v-else class="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-gray-200 text-gray-400">
+                    <i class="las la-user-cog text-xl"></i>
+                  </span>
+                  <div class="min-w-0">
+                    <p class="truncate text-sm font-semibold text-gray-900">
+                      {{ getPmProfile(a.managerUserId)?.displayName || 'Property manager' }}
+                    </p>
+                    <p v-if="getPmProfile(a.managerUserId)?.companyName" class="truncate text-xs text-gray-500">
+                      {{ getPmProfile(a.managerUserId).companyName }}
+                    </p>
+                    <p v-if="a.acceptedTerms" class="mt-0.5 text-xs text-emerald-700">
+                      <i class="las la-handshake"></i> {{ summarizeProposal(a.acceptedTerms) }}
+                    </p>
+                    <p v-else-if="a.assignedBy" class="text-xs text-gray-500">Assigned by {{ a.assignedBy }}</p>
+                  </div>
+                </div>
+                <div class="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    class="rounded border border-gray-300 px-3 py-1.5 text-xs font-semibold text-primary-700 hover:border-primary-300 hover:bg-primary-50"
+                    @click="openPmDetail(String(a.managerUserId), { assignment: a })"
+                  >
+                    Profile
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                    :disabled="pmRemovingAssignmentId === String(a._id)"
+                    @click="removePmAssignment(a)"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Manual assign -->
+        <div class="compact-card rounded bg-white p-4">
+          <h2 class="mb-1 text-sm font-semibold text-gray-900">Manually assign a property manager</h2>
+          <p class="mb-4 text-xs text-gray-500">Only approved property managers appear in the list. They can also send a "request to manage" from the public listing.</p>
+          <div class="grid max-w-lg gap-3">
             <div>
               <label class="field-label">Property manager</label>
               <select v-model="assignPmForm.managerUserId" class="field-input">
                 <option value="">Select manager…</option>
-                <option v-for="uid in assignablePmUserIds" :key="uid" :value="uid">{{ uid }}</option>
+                <option v-for="uid in assignablePmUserIds" :key="uid" :value="uid">
+                  {{ getPmProfile(uid)?.displayName || uid }}
+                  <template v-if="getPmProfile(uid)?.companyName">— {{ getPmProfile(uid).companyName }}</template>
+                </option>
               </select>
             </div>
             <button
               type="button"
-              class="rounded bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
+              class="inline-flex w-full max-w-xs items-center justify-center gap-2 rounded bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
               :disabled="assignPmSaving || !assignPmForm.managerUserId"
               @click="submitAssignPm"
             >
+              <i class="las la-user-plus"></i>
               {{ assignPmSaving ? 'Saving…' : 'Assign manager' }}
             </button>
           </div>
+        </div>
+      </div>
+
+      <!-- ── TAB: Payouts ── -->
+      <div v-show="activeTab === 'payouts'" class="space-y-6">
+        <div>
+          <h2 class="mb-2 text-sm font-semibold text-gray-900">
+            <i class="las la-user-tie text-primary-600"></i> Agent commissions
+          </h2>
+          <p class="mb-3 text-xs text-gray-500">
+            Record, approve, mark paid, or cancel commissions owed to agents representing this property.
+          </p>
+          <div class="mb-3 flex justify-end">
+            <button
+              type="button"
+              class="inline-flex items-center gap-1.5 rounded border border-primary-200 bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary-700 hover:bg-primary-100"
+              @click="openNewPayoutModal('agent')"
+            >
+              <i class="las la-plus-circle text-sm"></i> Record commission
+            </button>
+          </div>
+          <UiPayoutsTable kind="agent" :property-id="id" :can-manage="true" />
+        </div>
+
+        <div>
+          <h2 class="mb-2 text-sm font-semibold text-gray-900">
+            <i class="las la-user-cog text-primary-600"></i> Property manager fees
+          </h2>
+          <p class="mb-3 text-xs text-gray-500">
+            Record, approve, mark paid, or cancel management fees owed to property managers running this property.
+          </p>
+          <div class="mb-3 flex justify-end">
+            <button
+              type="button"
+              class="inline-flex items-center gap-1.5 rounded border border-primary-200 bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary-700 hover:bg-primary-100"
+              @click="openNewPayoutModal('pm')"
+            >
+              <i class="las la-plus-circle text-sm"></i> Record fee
+            </button>
+          </div>
+          <UiPayoutsTable kind="pm" :property-id="id" :can-manage="true" />
         </div>
       </div>
 
@@ -949,12 +1183,24 @@
             <!-- Terms for this property -->
             <div v-if="agentDetailRequest || agentDetailAssignment" class="mb-4 rounded border border-gray-200 bg-gray-50 p-4">
               <p class="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">Terms for this property</p>
+              <div v-if="agentDetailRequest?.proposal" class="mb-2 rounded border border-primary-100 bg-primary-50/40 px-2.5 py-1.5 text-xs">
+                <p class="font-semibold text-primary-800"><i class="las la-arrow-down text-primary-600"></i> Their proposal</p>
+                <p class="mt-0.5 text-primary-700">{{ summarizeProposal(agentDetailRequest.proposal) }}</p>
+              </div>
+              <div v-if="agentDetailRequest?.counter" class="mb-2 rounded border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs">
+                <p class="font-semibold text-amber-800"><i class="las la-arrow-up text-amber-600"></i> Your counter</p>
+                <p class="mt-0.5 text-amber-800">{{ summarizeProposal(agentDetailRequest.counter) }}</p>
+              </div>
+              <div v-if="agentDetailAssignment?.acceptedTerms" class="mb-2 rounded border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs">
+                <p class="font-semibold text-emerald-800"><i class="las la-handshake text-emerald-600"></i> Agreed terms</p>
+                <p class="mt-0.5 text-emerald-800">{{ summarizeProposal(agentDetailAssignment.acceptedTerms) }}</p>
+              </div>
               <dl class="space-y-2">
-                <div v-if="agentDetailRequest && agentDetailRequest.commissionPercent != null" class="flex justify-between gap-3">
+                <div v-if="agentDetailRequest && agentDetailRequest.commissionPercent != null && !agentDetailRequest.proposal" class="flex justify-between gap-3">
                   <dt class="text-gray-600">Proposed commission</dt>
                   <dd class="font-semibold text-gray-900">{{ agentDetailRequest.commissionPercent }}%</dd>
                 </div>
-                <div v-if="agentDetailAssignment && agentDetailAssignment.commissionPercent != null" class="flex justify-between gap-3">
+                <div v-if="agentDetailAssignment && agentDetailAssignment.commissionPercent != null && !agentDetailAssignment.acceptedTerms" class="flex justify-between gap-3">
                   <dt class="text-gray-600">Agreed commission</dt>
                   <dd class="font-semibold text-gray-900">{{ agentDetailAssignment.commissionPercent }}%</dd>
                 </div>
@@ -967,6 +1213,12 @@
                   <dd class="mt-1 whitespace-pre-wrap leading-relaxed text-gray-700">{{ agentDetailAssignment.agreementNote }}</dd>
                 </div>
               </dl>
+            </div>
+
+            <!-- Verification documents -->
+            <div v-if="agentDetailProfile?.files?.length" class="mb-4">
+              <p class="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">Verification documents</p>
+              <UiVerificationDocsList :files="agentDetailProfile.files" />
             </div>
 
             <p class="font-mono text-[11px] text-gray-400">ID <span class="text-gray-600">{{ agentDetailUserId }}</span></p>
@@ -985,11 +1237,26 @@
               </button>
               <button
                 type="button"
+                class="flex-1 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-50 sm:flex-none"
+                :disabled="!!requestActionId"
+                @click="closeAgentDetail(); openCounterEditor('agent', agentDetailRequest)"
+              >
+                <i class="las la-handshake mr-0.5"></i> Counter
+              </button>
+              <button
+                type="button"
+                class="flex-1 rounded border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 sm:flex-none"
+                @click="startThreadFromAgentRequest(agentDetailRequest)"
+              >
+                <i class="las la-comment mr-0.5"></i> Message
+              </button>
+              <button
+                type="button"
                 class="flex-1 rounded bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 sm:flex-none"
                 :disabled="!!requestActionId"
                 @click="decideAgentRequestFromModal('accepted')"
               >
-                <i class="las la-check mr-0.5"></i> Accept request
+                <i class="las la-check mr-0.5"></i> Accept
               </button>
             </template>
             <button
@@ -1003,6 +1270,311 @@
         </div>
       </div>
     </Teleport>
+
+    <!-- Property manager profile (full detail) -->
+    <Teleport to="body">
+      <div
+        v-if="pmDetailModalOpen"
+        class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pm-detail-title"
+        @click.self="closePmDetail"
+      >
+        <div
+          class="flex max-h-[min(90vh,720px)] w-full max-w-md flex-col overflow-hidden rounded border border-gray-200 bg-white"
+          @click.stop
+        >
+          <div class="flex shrink-0 items-start gap-4 border-b border-gray-200 bg-gray-50 px-5 py-4">
+            <img
+              v-if="pmDetailProfile?.avatarUrl"
+              :src="pmDetailProfile.avatarUrl"
+              :alt="pmDetailProfile?.displayName || 'Property manager'"
+              class="h-14 w-14 shrink-0 rounded object-cover"
+            />
+            <span v-else class="flex h-14 w-14 shrink-0 items-center justify-center rounded bg-gray-200 text-gray-400">
+              <i class="las la-user-cog text-3xl"></i>
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Property manager profile</p>
+              <h3 id="pm-detail-title" class="mt-0.5 text-base font-bold text-gray-900">
+                {{ pmDetailProfile?.displayName || 'Property manager' }}
+              </h3>
+              <p v-if="pmDetailProfile?.companyName" class="text-sm text-gray-600">{{ pmDetailProfile.companyName }}</p>
+              <span
+                v-if="pmDetailProfile?.verified"
+                class="mt-1 inline-flex items-center gap-0.5 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-emerald-800"
+              >
+                <i class="las la-shield-alt"></i> Verified
+              </span>
+            </div>
+            <button
+              type="button"
+              class="shrink-0 rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-600"
+              aria-label="Close"
+              @click="closePmDetail"
+            >
+              <i class="las la-times text-xl"></i>
+            </button>
+          </div>
+
+          <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4 text-sm">
+            <div v-if="pmTabError" class="mb-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
+              {{ pmTabError }}
+            </div>
+
+            <div
+              v-if="pmDetailProfile?.portfolioSize != null || pmDetailProfile?.yearsManaging != null"
+              class="mb-4 grid grid-cols-2 gap-2"
+            >
+              <div v-if="pmDetailProfile?.portfolioSize != null" class="rounded border border-gray-200 bg-gray-50 px-3 py-2.5">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Portfolio</p>
+                <p class="mt-0.5 text-lg font-bold text-gray-900">{{ pmDetailProfile.portfolioSize }}</p>
+              </div>
+              <div v-if="pmDetailProfile?.yearsManaging != null" class="rounded border border-gray-200 bg-gray-50 px-3 py-2.5">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Experience</p>
+                <p class="mt-0.5 text-sm font-semibold text-gray-900">{{ pmDetailProfile.yearsManaging }} yrs</p>
+              </div>
+            </div>
+
+            <div v-if="pmDetailProfile?.bio" class="mb-4">
+              <p class="mb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">About</p>
+              <p class="whitespace-pre-wrap leading-relaxed text-gray-700">{{ pmDetailProfile.bio }}</p>
+            </div>
+
+            <div class="mb-4">
+              <p class="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">Contact</p>
+              <div class="space-y-1.5">
+                <div v-if="pmDetailProfile?.emailPublic" class="flex items-center gap-2">
+                  <span class="w-20 shrink-0 text-xs text-gray-500">Email</span>
+                  <a :href="'mailto:' + pmDetailProfile.emailPublic" class="min-w-0 break-all font-medium text-primary-600 hover:underline">{{ pmDetailProfile.emailPublic }}</a>
+                </div>
+                <div v-if="pmDetailProfile?.phone" class="flex items-center gap-2">
+                  <span class="w-20 shrink-0 text-xs text-gray-500">Phone</span>
+                  <span class="text-gray-900">{{ pmDetailProfile.phone }}</span>
+                </div>
+                <div v-if="pmDetailProfile?.whatsapp" class="flex items-center gap-2">
+                  <span class="w-20 shrink-0 text-xs text-gray-500">WhatsApp</span>
+                  <span class="text-gray-900">{{ pmDetailProfile.whatsapp }}</span>
+                </div>
+                <p v-if="!pmDetailProfile?.emailPublic && !pmDetailProfile?.phone && !pmDetailProfile?.whatsapp" class="text-xs text-gray-500">
+                  No public contact details shared.
+                </p>
+              </div>
+            </div>
+
+            <div v-if="pmDetailProfile?.services?.length" class="mb-4">
+              <p class="mb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">Services</p>
+              <div class="flex flex-wrap gap-1">
+                <span
+                  v-for="(s, i) in pmDetailProfile.services"
+                  :key="'svc-' + i"
+                  class="rounded bg-primary-50 px-2 py-0.5 text-xs text-primary-800"
+                >{{ s }}</span>
+              </div>
+            </div>
+
+            <div v-if="pmDetailProfile?.regions?.length" class="mb-4">
+              <p class="mb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">Regions</p>
+              <p class="text-gray-700">{{ pmDetailProfile.regions.join(', ') }}</p>
+            </div>
+
+            <!-- Terms for this property -->
+            <div v-if="pmDetailRequest || pmDetailAssignment" class="mb-4 rounded border border-gray-200 bg-gray-50 p-4">
+              <p class="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">Terms for this property</p>
+              <div v-if="pmDetailRequest?.proposal" class="mb-2 rounded border border-primary-100 bg-primary-50/40 px-2.5 py-1.5 text-xs">
+                <p class="font-semibold text-primary-800"><i class="las la-arrow-down text-primary-600"></i> Their proposal</p>
+                <p class="mt-0.5 text-primary-700">{{ summarizeProposal(pmDetailRequest.proposal) }}</p>
+              </div>
+              <div v-if="pmDetailRequest?.counter" class="mb-2 rounded border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs">
+                <p class="font-semibold text-amber-800"><i class="las la-arrow-up text-amber-600"></i> Your counter</p>
+                <p class="mt-0.5 text-amber-800">{{ summarizeProposal(pmDetailRequest.counter) }}</p>
+              </div>
+              <div v-if="pmDetailAssignment?.acceptedTerms" class="mb-2 rounded border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs">
+                <p class="font-semibold text-emerald-800"><i class="las la-handshake text-emerald-600"></i> Agreed terms</p>
+                <p class="mt-0.5 text-emerald-800">{{ summarizeProposal(pmDetailAssignment.acceptedTerms) }}</p>
+              </div>
+              <div v-if="pmDetailRequest?.message" class="border-t border-gray-200 pt-2">
+                <p class="text-xs font-semibold text-gray-600">Message from manager</p>
+                <p class="mt-1 whitespace-pre-wrap leading-relaxed text-gray-700">{{ pmDetailRequest.message }}</p>
+              </div>
+            </div>
+
+            <!-- Verification documents -->
+            <div v-if="pmDetailProfile?.files?.length" class="mb-4">
+              <p class="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">Verification documents</p>
+              <UiVerificationDocsList :files="pmDetailProfile.files" />
+            </div>
+
+            <p class="font-mono text-[11px] text-gray-400">ID <span class="text-gray-600">{{ pmDetailUserId }}</span></p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 border-t border-gray-200 px-5 py-3">
+            <template v-if="pmDetailRequest">
+              <button
+                type="button"
+                class="flex-1 rounded border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 sm:flex-none"
+                :disabled="!!pmRequestActionId"
+                @click="decidePmRequest(pmDetailRequest, 'rejected'); closePmDetail()"
+              >
+                Decline
+              </button>
+              <button
+                type="button"
+                class="flex-1 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-50 sm:flex-none"
+                :disabled="!!pmRequestActionId"
+                @click="closePmDetail(); openCounterEditor('pm', pmDetailRequest)"
+              >
+                <i class="las la-handshake mr-0.5"></i> Counter
+              </button>
+              <button
+                type="button"
+                class="flex-1 rounded border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 sm:flex-none"
+                @click="startThreadFromPmRequest(pmDetailRequest)"
+              >
+                <i class="las la-comment mr-0.5"></i> Message
+              </button>
+              <button
+                type="button"
+                class="flex-1 rounded bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 sm:flex-none"
+                :disabled="!!pmRequestActionId"
+                @click="decidePmRequest(pmDetailRequest, 'accepted'); closePmDetail()"
+              >
+                <i class="las la-check mr-0.5"></i> Accept
+              </button>
+            </template>
+            <button
+              type="button"
+              class="ml-auto rounded border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              @click="closePmDetail"
+            >
+              {{ pmDetailRequest ? 'Cancel' : 'Close' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- New payout modal -->
+    <Teleport to="body">
+      <div
+        v-if="newPayoutOpen"
+        class="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4"
+        @click.self="newPayoutOpen = false"
+      >
+        <div class="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded border border-gray-200 bg-white" @click.stop>
+          <div class="flex shrink-0 items-start justify-between border-b border-gray-200 px-5 py-4">
+            <div>
+              <h3 class="text-sm font-bold text-gray-900">
+                Record {{ newPayoutKind === 'agent' ? 'agent commission' : 'manager fee' }}
+              </h3>
+              <p class="mt-0.5 text-[11px] text-gray-500">
+                Logged payouts can be approved, marked paid, or cancelled at any time.
+              </p>
+            </div>
+            <button type="button" class="text-gray-400 hover:text-gray-600" @click="newPayoutOpen = false">
+              <i class="las la-times text-xl"></i>
+            </button>
+          </div>
+          <div class="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
+            <p v-if="newPayoutError" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">{{ newPayoutError }}</p>
+            <div>
+              <label class="field-label">Recipient</label>
+              <select v-model="newPayoutForm.recipientUserId" class="field-input">
+                <option value="">Select…</option>
+                <option v-for="r in newPayoutRecipients" :key="r.userId" :value="r.userId">{{ r.label }}</option>
+              </select>
+              <p v-if="!newPayoutRecipients.length" class="mt-1 text-xs text-amber-700">
+                No {{ newPayoutKind === 'agent' ? 'agents' : 'property managers' }} assigned yet. Accept a request or assign one above.
+              </p>
+            </div>
+            <div class="grid grid-cols-3 gap-3">
+              <div class="col-span-2">
+                <label class="field-label">Amount</label>
+                <input v-model.number="newPayoutForm.amount" type="number" min="0" step="0.01" class="field-input" placeholder="e.g. 2500" />
+              </div>
+              <div>
+                <label class="field-label">Currency</label>
+                <select v-model="newPayoutForm.currency" class="field-input">
+                  <option>GHS</option>
+                  <option>USD</option>
+                  <option>EUR</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="field-label">Trigger</label>
+              <select v-model="newPayoutForm.trigger" class="field-input">
+                <option value="rent_consummated">Rent consummated</option>
+                <option value="sale_consummated">Sale consummated</option>
+                <option value="first_month_paid">First month rent paid</option>
+                <option value="each_renewal">On lease renewal</option>
+                <option value="monthly_rent_collected">Monthly rent collected</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label">Note (optional)</label>
+              <textarea v-model="newPayoutForm.note" rows="2" maxlength="2000" class="field-input" placeholder="Tenant moved in 1 Aug, contract signed 15 Jul…" />
+            </div>
+          </div>
+          <div class="flex shrink-0 items-center justify-end gap-2 border-t border-gray-200 px-5 py-3">
+            <button type="button" class="rounded border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" @click="newPayoutOpen = false">Cancel</button>
+            <button
+              type="button"
+              class="inline-flex items-center gap-1.5 rounded bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
+              :disabled="newPayoutSubmitting"
+              @click="submitNewPayout"
+            >
+              <i v-if="newPayoutSubmitting" class="las la-circle-notch la-spin text-sm"></i>
+              <i v-else class="las la-check text-sm"></i>
+              {{ newPayoutSubmitting ? 'Saving…' : 'Record payout' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Counter editor modal (shared for agent + PM requests) -->
+    <Teleport to="body">
+      <div
+        v-if="counterModalOpen"
+        class="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4"
+        @click.self="closeCounterEditor"
+      >
+        <div class="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded border border-gray-200 bg-white" @click.stop>
+          <div class="flex shrink-0 items-start justify-between border-b border-gray-200 px-5 py-4">
+            <div>
+              <h3 class="text-sm font-bold text-gray-900">
+                Counter {{ counterRequestKind === 'agent' ? 'agent' : 'manager' }} proposal
+              </h3>
+              <p class="mt-0.5 text-[11px] text-gray-500">
+                Propose terms you would accept; the {{ counterRequestKind === 'agent' ? 'agent' : 'manager' }} can accept, decline or send back a new proposal.
+              </p>
+            </div>
+            <button type="button" class="text-gray-400 hover:text-gray-600" @click="closeCounterEditor">
+              <i class="las la-times text-xl"></i>
+            </button>
+          </div>
+          <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4 space-y-3">
+            <p v-if="counterError" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">{{ counterError }}</p>
+            <UiFeeProposalEditor v-model="counterProposal" />
+          </div>
+          <div class="flex shrink-0 items-center justify-end gap-2 border-t border-gray-200 px-5 py-3">
+            <button type="button" class="rounded border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" @click="closeCounterEditor">Cancel</button>
+            <button
+              type="button"
+              class="inline-flex items-center gap-1.5 rounded bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
+              :disabled="counterSubmitting"
+              @click="submitCounter"
+            >
+              <i v-if="counterSubmitting" class="las la-circle-notch la-spin text-sm"></i>
+              <i v-else class="las la-paper-plane text-sm"></i>
+              {{ counterSubmitting ? 'Sending…' : 'Send counter' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -1010,6 +1582,11 @@
 import { usePropertiesStore } from '@@/stores/properties'
 import { useUnitsStore } from '@@/stores/units'
 import { useAuthStore } from '@@/stores/auth'
+import {
+  summarizeProposal,
+  emptyProposal,
+  type FeeProposal
+} from '../../../composables/useFeeProposal'
 
 definePageMeta({ middleware: ['auth', 'landlord'], layout: 'account' })
 useHead({ title: 'Manage property - CribHub' })
@@ -1024,6 +1601,73 @@ const canDestroyPortfolio = computed(() => auth.hasRole('landlord', 'admin'))
 const backToListLabel = computed(() =>
   auth.hasRole('property_manager') && !auth.hasRole('landlord', 'admin') ? 'Properties' : 'My properties'
 )
+
+const isOwnerLandlord = computed(() => {
+  const uid = String((auth.user as any)?._id || '')
+  return !!uid && String((properties.selected as any)?.landlordId || '') === uid
+})
+
+const roleContextBanner = computed(() => {
+  if (isOwnerLandlord.value) return null
+  if (auth.hasRole('admin') && !auth.hasRole('property_manager', 'agent')) return null
+  const isPm = auth.hasRole('property_manager') && !auth.hasRole('landlord')
+  const isAg = auth.hasRole('agent') && !auth.hasRole('landlord')
+  if (!isPm && !isAg) return null
+  if (isPm) {
+    return {
+      icon: 'las la-user-tie',
+      title: 'You are viewing this property as a property manager',
+      body: 'You can browse the listing and coordinate with the landlord. Landlord-only edits are hidden.',
+      profileLink: '/pm/profile',
+      openMessageHandler: true as const,
+      messageThreadId: pmActiveThreadId.value
+    }
+  }
+  return {
+    icon: 'las la-user-tag',
+    title: 'You are viewing this property as the assigned agent',
+    body: 'Coordinate the listing, share updates, and message the landlord directly.',
+    profileLink: '/agent/profile',
+    openMessageHandler: true as const,
+    messageThreadId: agentActiveThreadId.value
+  }
+})
+
+const pmActiveThreadId = ref<string | null>(null)
+const agentActiveThreadId = ref<string | null>(null)
+
+async function openRoleContextMessage() {
+  try {
+    const banner = roleContextBanner.value
+    if (!banner) return
+    let tid = banner.messageThreadId
+    if (!tid) {
+      const landlordId = String((properties.selected as any)?.landlordId || '')
+      const myId = String((auth.user as any)?._id || '')
+      if (!landlordId || !myId) return
+      const isPm = auth.hasRole('property_manager') && !auth.hasRole('landlord')
+      const kind = isPm ? 'landlord-pm' : 'landlord-agent'
+      const feathers = useNuxtApp().$feathers as any
+      const created = await feathers.service('threads').create({
+        kind,
+        participantIds: [landlordId, myId],
+        subject: { type: 'property', id: id.value },
+        propertyId: id.value,
+        title: (properties.selected as any)?.name
+          ? `${isPm ? 'Manage' : 'Represent'}: ${(properties.selected as any).name}`
+          : isPm
+            ? 'Property management'
+            : 'Property representation'
+      })
+      tid = String((created as any)?._id || '')
+      if (isPm) pmActiveThreadId.value = tid
+      else agentActiveThreadId.value = tid
+    }
+    if (tid) await navigateTo(`/messages/${tid}`)
+  } catch (e: any) {
+    pageError.value = e?.message || 'Failed to open conversation'
+  }
+}
 
 // Page state
 const pageError = ref<string | null>(null)
@@ -1102,10 +1746,161 @@ const pmTabError = ref<string | null>(null)
 const pmAssignments = ref<any[]>([])
 const incomingPmRequests = ref<any[]>([])
 const pmRoleUserIds = ref<string[]>([])
+const pmProfiles = ref<any[]>([])
 const assignPmForm = reactive({ managerUserId: '' })
 const assignPmSaving = ref(false)
 const pmRequestActionId = ref<string | null>(null)
 const pmRemovingAssignmentId = ref<string | null>(null)
+
+function getPmProfile(userId: string | undefined | null) {
+  if (userId == null || String(userId).trim() === '') return null
+  const u = String(userId)
+  return pmProfiles.value.find((p: any) => String(p.userId) === u) ?? null
+}
+
+// PM detail modal (mirrors agent detail modal)
+const pmDetailModalOpen = ref(false)
+const pmDetailUserId = ref<string | null>(null)
+const pmDetailRequest = ref<any>(null)
+const pmDetailAssignment = ref<any>(null)
+const pmDetailProfile = computed(() => {
+  const uid = pmDetailUserId.value
+  if (!uid) return null
+  return pmProfiles.value.find((p: any) => String(p.userId) === String(uid)) ?? null
+})
+
+function openPmDetail(userId: string, opts?: { request?: any; assignment?: any }) {
+  pmTabError.value = null
+  pmDetailUserId.value = userId
+  pmDetailRequest.value = opts?.request ?? null
+  pmDetailAssignment.value = opts?.assignment ?? null
+  pmDetailModalOpen.value = true
+}
+
+function closePmDetail() {
+  pmDetailModalOpen.value = false
+  pmDetailUserId.value = null
+  pmDetailRequest.value = null
+  pmDetailAssignment.value = null
+}
+
+// Shared counter editor (for both agent + PM requests)
+const counterModalOpen = ref(false)
+const counterRequestRow = ref<any>(null)
+const counterRequestKind = ref<'agent' | 'pm'>('agent')
+const counterProposal = ref<FeeProposal | null>(null)
+const counterSubmitting = ref(false)
+const counterError = ref<string | null>(null)
+
+// New payout modal
+const newPayoutOpen = ref(false)
+const newPayoutKind = ref<'agent' | 'pm'>('agent')
+const newPayoutSubmitting = ref(false)
+const newPayoutError = ref<string | null>(null)
+const newPayoutForm = reactive<{
+  recipientUserId: string
+  amount: number | null
+  currency: string
+  trigger: 'rent_consummated' | 'sale_consummated' | 'first_month_paid' | 'each_renewal' | 'monthly_rent_collected'
+  note: string
+}>({
+  recipientUserId: '',
+  amount: null,
+  currency: 'GHS',
+  trigger: 'rent_consummated',
+  note: ''
+})
+
+const newPayoutRecipients = computed(() => {
+  if (newPayoutKind.value === 'agent') {
+    return assignments.value.map((a: any) => ({
+      userId: String(a.agentUserId),
+      label: getAgentProfile(a.agentUserId)?.displayName || a.agentUserId
+    }))
+  }
+  return pmAssignments.value.map((a: any) => ({
+    userId: String(a.managerUserId),
+    label: getPmProfile(a.managerUserId)?.displayName || a.managerUserId
+  }))
+})
+
+function openNewPayoutModal(kind: 'agent' | 'pm') {
+  newPayoutKind.value = kind
+  newPayoutError.value = null
+  newPayoutForm.recipientUserId = newPayoutRecipients.value[0]?.userId || ''
+  newPayoutForm.amount = null
+  newPayoutForm.currency = 'GHS'
+  newPayoutForm.trigger = 'rent_consummated'
+  newPayoutForm.note = ''
+  newPayoutOpen.value = true
+}
+
+async function submitNewPayout() {
+  newPayoutError.value = null
+  if (!newPayoutForm.recipientUserId) {
+    newPayoutError.value = 'Pick a recipient.'
+    return
+  }
+  if (!newPayoutForm.amount || newPayoutForm.amount <= 0) {
+    newPayoutError.value = 'Amount must be greater than zero.'
+    return
+  }
+  newPayoutSubmitting.value = true
+  try {
+    const feathers = useNuxtApp().$feathers as any
+    const svc = newPayoutKind.value === 'agent' ? 'agent-payouts' : 'pm-payouts'
+    const payload: Record<string, any> = {
+      propertyId: id.value,
+      amount: Number(newPayoutForm.amount),
+      currency: newPayoutForm.currency,
+      trigger: newPayoutForm.trigger,
+      status: 'pending'
+    }
+    if (newPayoutKind.value === 'agent') payload.agentUserId = newPayoutForm.recipientUserId
+    else payload.managerUserId = newPayoutForm.recipientUserId
+    if (newPayoutForm.note.trim()) payload.note = newPayoutForm.note.trim()
+    await feathers.service(svc).create(payload)
+    newPayoutOpen.value = false
+  } catch (e: any) {
+    newPayoutError.value = e?.message || 'Could not create payout'
+  } finally {
+    newPayoutSubmitting.value = false
+  }
+}
+
+function openCounterEditor(kind: 'agent' | 'pm', row: any) {
+  counterError.value = null
+  counterRequestRow.value = row
+  counterRequestKind.value = kind
+  counterProposal.value = row?.proposal
+    ? JSON.parse(JSON.stringify(row.proposal))
+    : (row?.counter ? JSON.parse(JSON.stringify(row.counter)) : emptyProposal())
+  counterModalOpen.value = true
+}
+
+function closeCounterEditor() {
+  counterModalOpen.value = false
+  counterRequestRow.value = null
+  counterProposal.value = null
+}
+
+async function submitCounter() {
+  if (!counterRequestRow.value || !counterProposal.value) return
+  if (!counterProposal.value.rent && !counterProposal.value.sale) {
+    counterError.value = 'Add at least one fee (rent or sale) before sending.'
+    return
+  }
+  counterSubmitting.value = true
+  counterError.value = null
+  try {
+    const ok = counterRequestKind.value === 'agent'
+      ? await counterAgentRequest(counterRequestRow.value, counterProposal.value)
+      : await counterPmRequest(counterRequestRow.value, counterProposal.value)
+    if (ok) closeCounterEditor()
+  } finally {
+    counterSubmitting.value = false
+  }
+}
 
 const assignablePmUserIds = computed(() => {
   const assigned = new Set(pmAssignments.value.map((a) => String(a.managerUserId)))
@@ -1120,6 +1915,7 @@ const tabs = [
   { id: 'units', label: 'Units', icon: 'las la-layer-group' },
   { id: 'agent', label: 'Agent', icon: 'las la-user-tie' },
   { id: 'pm', label: 'Managers', icon: 'las la-user-cog' },
+  { id: 'payouts', label: 'Payouts', icon: 'las la-coins' },
 ]
 
 // Edit form
@@ -1212,8 +2008,8 @@ async function loadAgentTab() {
     const pid = id.value
     const [asRes, reqRes, profRes] = await Promise.all([
       feathers.service('agent-assignments').find({ query: { propertyId: pid, $limit: 50, $sort: { createdAt: -1 } } }),
-      feathers.service('agent-listing-requests').find({ query: { propertyId: pid, status: 'pending', $limit: 50, $sort: { createdAt: -1 } } }),
-      feathers.service('agent-profiles').find({ query: { $limit: 80, $sort: { createdAt: -1 } } })
+      feathers.service('agent-listing-requests').find({ query: { propertyId: pid, status: { $in: ['pending', 'countered'] }, $limit: 50, $sort: { createdAt: -1 } } }),
+      feathers.service('agent-profiles').find({ query: { $limit: 80, $sort: { createdAt: -1 }, $include: ['files'] } })
     ])
     const norm = (res: any) => {
       const d = res?.data
@@ -1233,7 +2029,7 @@ async function loadAgentTab() {
     const needIds = [...uidSet].filter((id) => id && !have.has(id))
     if (needIds.length) {
       const extraRes = await feathers.service('agent-profiles').find({
-        query: { userId: { $in: needIds }, $limit: 100 }
+        query: { userId: { $in: needIds }, $limit: 100, $include: ['files'] }
       })
       merged = [...merged, ...norm(extraRes)]
     }
@@ -1293,6 +2089,38 @@ async function decideAgentRequest(row: any, status: 'accepted' | 'rejected'): Pr
   }
 }
 
+async function counterAgentRequest(row: any, counter: FeeProposal): Promise<boolean> {
+  requestActionId.value = String(row._id)
+  agentTabError.value = null
+  try {
+    const feathers = useNuxtApp().$feathers as any
+    await feathers.service('agent-listing-requests').patch(String(row._id), { counter, status: 'countered' })
+    await loadAgentTab()
+    return true
+  } catch (e: any) {
+    agentTabError.value = e?.message || 'Could not send counter'
+    return false
+  } finally {
+    requestActionId.value = null
+  }
+}
+
+async function startThreadFromAgentRequest(row: any) {
+  try {
+    const feathers = useNuxtApp().$feathers as any
+    const t = await feathers.service('threads').create({
+      kind: 'landlord-agent',
+      subject: 'property',
+      propertyId: row.propertyId,
+      participantIds: [String(row.landlordId), String(row.agentUserId)],
+      title: properties.selected?.name || 'Listing chat'
+    })
+    await navigateTo(`/messages/${t._id}`)
+  } catch (e: any) {
+    agentTabError.value = e?.message || 'Could not start chat'
+  }
+}
+
 async function decideAgentRequestFromModal(status: 'accepted' | 'rejected') {
   const row = agentDetailRequest.value
   if (!row) return
@@ -1329,7 +2157,7 @@ async function loadPmTab() {
     const [asRes, reqRes, rolesRes] = await Promise.all([
       feathers.service('property-manager-assignments').find({ query: { propertyId: pid, $limit: 50, $sort: { createdAt: -1 } } }),
       feathers.service('property-manager-listing-requests').find({
-        query: { propertyId: pid, status: 'pending', $limit: 50, $sort: { createdAt: -1 } }
+        query: { propertyId: pid, status: { $in: ['pending', 'countered'] }, $limit: 50, $sort: { createdAt: -1 } }
       }),
       feathers.service('user-roles').find({
         query: { role: 'property_manager', $limit: 200, $sort: { createdAt: -1 } }
@@ -1340,6 +2168,20 @@ async function loadPmTab() {
     const roleRows = normFeathersRows(rolesRes)
     const ids = roleRows.map((r: any) => String(r.userId || '').trim()).filter(Boolean)
     pmRoleUserIds.value = [...new Set(ids)]
+
+    // Fetch property-manager profiles (with verification files) for everyone shown in requests + assignments
+    const uidSet = new Set<string>()
+    for (const r of incomingPmRequests.value) if (r?.managerUserId) uidSet.add(String(r.managerUserId))
+    for (const a of pmAssignments.value) if (a?.managerUserId) uidSet.add(String(a.managerUserId))
+    const uidArr = [...uidSet]
+    if (uidArr.length) {
+      const profRes = await feathers.service('property-manager-profiles').find({
+        query: { userId: { $in: uidArr }, $limit: 200, $include: ['files'] }
+      })
+      pmProfiles.value = normFeathersRows(profRes)
+    } else {
+      pmProfiles.value = []
+    }
   } catch (e: any) {
     pmTabError.value = e?.message || 'Failed to load property manager data'
   } finally {
@@ -1380,6 +2222,38 @@ async function decidePmRequest(row: any, status: 'accepted' | 'rejected') {
   }
 }
 
+async function counterPmRequest(row: any, counter: FeeProposal): Promise<boolean> {
+  pmRequestActionId.value = String(row._id)
+  pmTabError.value = null
+  try {
+    const feathers = useNuxtApp().$feathers as any
+    await feathers.service('property-manager-listing-requests').patch(String(row._id), { counter, status: 'countered' })
+    await loadPmTab()
+    return true
+  } catch (e: any) {
+    pmTabError.value = e?.message || 'Could not send counter'
+    return false
+  } finally {
+    pmRequestActionId.value = null
+  }
+}
+
+async function startThreadFromPmRequest(row: any) {
+  try {
+    const feathers = useNuxtApp().$feathers as any
+    const t = await feathers.service('threads').create({
+      kind: 'landlord-pm',
+      subject: 'property',
+      propertyId: row.propertyId,
+      participantIds: [String(row.landlordId), String(row.managerUserId)],
+      title: properties.selected?.name || 'Management chat'
+    })
+    await navigateTo(`/messages/${t._id}`)
+  } catch (e: any) {
+    pmTabError.value = e?.message || 'Could not start chat'
+  }
+}
+
 async function removePmAssignment(row: any) {
   if (!confirm('Remove this property manager from the property?')) return
   pmRemovingAssignmentId.value = String(row._id)
@@ -1406,6 +2280,33 @@ onMounted(async () => {
     else await reloadUnits()
     syncEditFromSelected()
   } catch (e: any) { pageError.value = e?.message || 'Failed to load property' }
+
+  // For PM/agent viewers: prefetch their existing thread with the landlord (if any).
+  try {
+    const banner = roleContextBanner.value
+    if (banner) {
+      const myId = String((auth.user as any)?._id || '')
+      const landlordId = String((properties.selected as any)?.landlordId || '')
+      const isPm = auth.hasRole('property_manager') && !auth.hasRole('landlord')
+      if (myId && landlordId) {
+        const feathers = useNuxtApp().$feathers as any
+        const res = await feathers.service('threads').find({
+          query: {
+            kind: isPm ? 'landlord-pm' : 'landlord-agent',
+            participantIds: myId,
+            propertyId: id.value,
+            $limit: 1
+          }
+        })
+        const arr = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : []
+        const tid = arr[0]?._id ? String(arr[0]._id) : null
+        if (tid) {
+          if (isPm) pmActiveThreadId.value = tid
+          else agentActiveThreadId.value = tid
+        }
+      }
+    }
+  } catch {}
 
   const feathers = useNuxtApp().$feathers as any
   const pid = id.value
