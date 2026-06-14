@@ -25,8 +25,8 @@ export default defineNuxtConfig({
       theme: {
         extend: {
           fontFamily: {
-            sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-            heading: ['Cal Sans', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif']
+            sans: ['"Google Sans Flex"', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            heading: ['"Google Sans Flex"', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif']
           }
         }
       }
@@ -75,8 +75,8 @@ export default defineNuxtConfig({
         { rel: 'manifest', href: '/manifest.json' },
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
+        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,100..1000&display=swap' },
         { rel: 'stylesheet', href: '/fonts/interui/stylesheet.css' },
-        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Cal+Sans&display=swap' },
         { rel: 'stylesheet', href: '/fonts/lineawesome/css/line-awesome.min.css' },
       ],
     }

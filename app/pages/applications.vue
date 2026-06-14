@@ -16,6 +16,17 @@
       </p>
     </div>
 
+    <!-- Role application cross-link -->
+    <div class="mb-4 flex items-center gap-2.5 rounded border border-gray-200 bg-white px-3 py-2.5">
+      <i class="las la-id-badge text-base text-gray-500 shrink-0"></i>
+      <p class="text-xs text-gray-700">
+        Tracking a verification request for a role?
+        <NuxtLink to="/account/role-requests" class="font-semibold text-primary-700 hover:underline">
+          See my role applications <i class="las la-arrow-right"></i>
+        </NuxtLink>
+      </p>
+    </div>
+
     <!-- Stats row -->
     <div class="mb-4 grid grid-cols-4 gap-2">
       <div class="compact-card bg-white rounded p-3 text-center">

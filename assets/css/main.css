@@ -2,12 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Body: local Inter. Headings: Cal Sans (Google Fonts). */
+/* Global type: Google Sans Flex (variable) from Google Fonts, with Inter fallback. */
 :root,
 :host {
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --font-heading: 'Sora', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Google Sans Flex', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Google Sans Flex', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-heading: 'Google Sans Flex', 'Inter', ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {
@@ -16,6 +16,13 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    font-optical-sizing: auto;
+    font-feature-settings:
+      'kern' 1,
+      'liga' 1,
+      'calt' 1,
+      'ss01' 1,
+      'cv11' 1;
   }
 
   body,
@@ -27,7 +34,9 @@
     font-feature-settings:
       'kern' 1,
       'liga' 1,
-      'calt' 1;
+      'calt' 1,
+      'ss01' 1,
+      'cv11' 1;
   }
 
   h1,
@@ -43,27 +52,11 @@
     font-feature-settings:
       'kern' 1,
       'liga' 1,
-      'calt' 1;
+      'calt' 1,
+      'ss01' 1,
+      'cv11' 1;
     font-optical-sizing: auto;
-  }
-
-  h1,
-  h2 {
-    letter-spacing: -0.03em;
-  }
-
-  h3,
-  h4 {
-    letter-spacing: -0.02em;
-  }
-
-  h5,
-  h6 {
-    letter-spacing: -0.01em;
-  }
-
-  .font-heading {
-    letter-spacing: -0.02em;
+    letter-spacing: 0;
   }
 }
 
@@ -71,7 +64,7 @@ html,
 body,
 :host {
   @apply bg-white text-gray-800 font-sans;
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Google Sans Flex', Inter, ui-sans-serif, system-ui, sans-serif;
   /* Prevent horizontal overflow on every viewport */
   overflow-x: hidden;
 }
@@ -127,7 +120,7 @@ h4,
 h5,
 h6,
 .font-heading {
-  font-family: 'Sora', Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Google Sans Flex', Inter, ui-sans-serif, system-ui, sans-serif;
 }
 
 /* Dark footer: monochrome mark reads as white */

@@ -24,6 +24,11 @@ module.exports = {
           800: '#1B262C',
           900: '#151e23'
         }
+      },
+      fontFamily: {
+        sans: ['"Google Sans Flex"', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        heading: ['"Google Sans Flex"', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        body: ['"Google Sans Flex"', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif']
       }
     }
   },

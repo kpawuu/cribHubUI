@@ -166,6 +166,15 @@
               </button>
               <button
                 type="button"
+                class="flex items-center gap-1.5 rounded border border-amber-300 bg-amber-50 px-3.5 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-50"
+                :disabled="busy === r._id"
+                @click="toggleRequestDocsPanel(r._id, r.role)"
+              >
+                <i class="las la-file-upload text-xs"></i>
+                Request docs
+              </button>
+              <button
+                type="button"
                 class="flex items-center gap-1.5 rounded border border-red-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
                 :disabled="busy === r._id"
                 @click="toggleRejectPanel(r._id)"
@@ -254,6 +263,52 @@
           </div>
         </Transition>
 
+        <!-- ── Inline request-docs panel ── -->
+        <Transition name="slide-down">
+          <div v-if="requestingDocsId === r._id" class="border-t border-amber-100 bg-amber-50 px-5 py-4">
+            <p class="mb-2 text-xs font-semibold text-amber-800">
+              <i class="las la-file-upload mr-1"></i>Request additional documents
+            </p>
+            <p class="mb-2 text-[11px] text-amber-700">
+              Tick the document types you still need from the applicant. They will be emailed and shown a checklist on their dashboard.
+            </p>
+            <div class="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+              <label
+                v-for="opt in docOptionsFor(r.role)"
+                :key="opt.key"
+                class="flex cursor-pointer items-center gap-2 rounded border border-amber-200 bg-white px-2.5 py-1.5 text-xs text-gray-800 hover:bg-amber-50"
+              >
+                <input
+                  type="checkbox"
+                  class="h-3.5 w-3.5 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                  :checked="(requestedDocs[r._id] || []).includes(opt.key)"
+                  @change="toggleRequestedDoc(r._id, opt.key)"
+                />
+                <span>{{ opt.label }}</span>
+              </label>
+            </div>
+            <div class="mt-2.5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                class="rounded border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-white"
+                @click="requestingDocsId = null"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                class="flex items-center gap-1.5 rounded bg-amber-600 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-700 disabled:opacity-50"
+                :disabled="busy === r._id || !(requestedDocs[r._id] || []).length"
+                @click="sendDocRequest(r._id)"
+              >
+                <i v-if="busy === r._id" class="las la-circle-notch la-spin text-xs"></i>
+                <i v-else class="las la-paper-plane text-xs"></i>
+                Notify applicant
+              </button>
+            </div>
+          </div>
+        </Transition>
+
         <!-- ── Inline reject panel ── -->
         <Transition name="slide-down">
           <div v-if="rejectingId === r._id" class="border-t border-red-100 bg-red-50 px-5 py-4">
@@ -332,6 +387,54 @@ const busy = ref<string | null>(null)
 const rejectingId = ref<string | null>(null)
 const rejectNotes = reactive<Record<string, string>>({})
 const expanded = reactive<Record<string, boolean>>({})
+const requestingDocsId = ref<string | null>(null)
+const requestedDocs = reactive<Record<string, string[]>>({})
+
+const DOC_OPTIONS_BY_ROLE: Record<string, Array<{ key: string; label: string }>> = {
+  landlord: [
+    { key: 'national_id', label: 'National ID (Ghana Card)' },
+    { key: 'proof_of_ownership', label: 'Proof of ownership' }
+  ],
+  property_manager: [
+    { key: 'national_id', label: 'National ID (Ghana Card)' },
+    { key: 'business_registration', label: 'Business registration' },
+    { key: 'pm_certificate', label: 'PM certification (optional)' }
+  ],
+  agent: [
+    { key: 'national_id', label: 'National ID (Ghana Card)' },
+    { key: 'agent_license', label: 'Agent licence' }
+  ]
+}
+function docOptionsFor(role: string) {
+  return DOC_OPTIONS_BY_ROLE[role] ?? [{ key: 'national_id', label: 'National ID (Ghana Card)' }]
+}
+function toggleRequestedDoc(id: string, key: string) {
+  const cur = requestedDocs[id] ? [...requestedDocs[id]] : []
+  const idx = cur.indexOf(key)
+  if (idx >= 0) cur.splice(idx, 1)
+  else cur.push(key)
+  requestedDocs[id] = cur
+}
+function toggleRequestDocsPanel(id: string, role: string) {
+  requestingDocsId.value = requestingDocsId.value === id ? null : id
+  if (requestingDocsId.value === id && !requestedDocs[id]) {
+    // Default to the missing required types for the role.
+    const need = (DOC_OPTIONS_BY_ROLE[role] ?? []).map((o) => o.key)
+    const uploadedTypes = new Set(
+      ((rows.value.find((r) => r._id === id)?.documents) || []).map((d: any) => String(d.documentType))
+    )
+    requestedDocs[id] = need.filter((k) => !uploadedTypes.has(k))
+  }
+}
+async function sendDocRequest(id: string) {
+  busy.value = id
+  try {
+    await rrStore.patch(id, { requestedDocumentTypes: requestedDocs[id] || [] })
+    requestingDocsId.value = null
+  } finally {
+    busy.value = null
+  }
+}
 
 function profileSectionTitle(role: string) {
   if (role === 'agent') return 'Agent profile'

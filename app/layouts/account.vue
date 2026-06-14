@@ -40,7 +40,8 @@
             </span>
           </NuxtLink>
 
-          <div ref="userDropdownRef" class="relative ml-1">
+          <ClientOnly>
+            <div ref="userDropdownRef" class="relative ml-1">
             <button
               type="button"
               class="flex items-center gap-2 rounded py-1.5 pl-1 pr-2 hover:bg-gray-100"
@@ -95,7 +96,14 @@
               </div>
             </div>
             </Transition>
-          </div>
+            </div>
+            <template #fallback>
+              <div class="ml-1 flex items-center gap-2 rounded py-1.5 pl-1 pr-2">
+                <div class="h-8 w-8 animate-pulse rounded bg-gray-200"></div>
+                <span class="hidden h-4 w-20 animate-pulse rounded bg-gray-200 sm:block"></span>
+              </div>
+            </template>
+          </ClientOnly>
         </div>
       </div>
     </header>
@@ -111,19 +119,33 @@
       :class="mobileSidebarOpen ? 'translate-x-0 shadow-xl' : '-translate-x-full'"
     >
       <div class="flex flex-1 flex-col overflow-y-auto">
-        <!-- User mini card -->
-        <div class="border-b border-gray-100 px-4 py-4">
-          <div class="flex items-center gap-3">
-            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-primary-600 text-sm font-bold text-white">
-              {{ userInitials }}
-            </div>
-            <div class="min-w-0">
-              <p class="truncate text-sm font-semibold text-gray-900">{{ auth.user?.fullName || 'Account' }}</p>
-              <p class="truncate text-xs text-gray-500">{{ primaryRoleLabel }}</p>
+        <!-- User mini card (client-only — depends on the authenticated user) -->
+        <ClientOnly>
+          <div class="border-b border-gray-100 px-4 py-4">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-primary-600 text-sm font-bold text-white">
+                {{ userInitials }}
+              </div>
+              <div class="min-w-0">
+                <p class="truncate text-sm font-semibold text-gray-900">{{ auth.user?.fullName || 'Account' }}</p>
+                <p class="truncate text-xs text-gray-500">{{ primaryRoleLabel }}</p>
+              </div>
             </div>
           </div>
-        </div>
+          <template #fallback>
+            <div class="border-b border-gray-100 px-4 py-4">
+              <div class="flex items-center gap-3">
+                <div class="h-10 w-10 shrink-0 animate-pulse rounded bg-gray-200"></div>
+                <div class="min-w-0 flex-1 space-y-1.5">
+                  <div class="h-3.5 w-24 animate-pulse rounded bg-gray-200"></div>
+                  <div class="h-3 w-16 animate-pulse rounded bg-gray-200"></div>
+                </div>
+              </div>
+            </div>
+          </template>
+        </ClientOnly>
 
+        <ClientOnly>
         <div class="flex-1 px-3 py-3">
           <!-- Main nav -->
           <p class="mb-1 px-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Overview</p>
@@ -276,6 +298,12 @@
             </nav>
           </template>
         </div>
+          <template #fallback>
+            <div class="flex-1 space-y-2 px-3 py-3">
+              <div v-for="n in 6" :key="n" class="h-8 animate-pulse rounded bg-gray-100"></div>
+            </div>
+          </template>
+        </ClientOnly>
 
         <!-- Bottom -->
         <div class="border-t border-gray-100 px-3 py-3">

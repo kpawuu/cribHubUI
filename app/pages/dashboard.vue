@@ -2,16 +2,31 @@
   <!-- Nested routes under `pages/dashboard/*` (e.g. site-pages CMS) render here; see Nuxt parent/child routing. -->
   <NuxtPage v-if="!isDashboardHome" />
   <div v-else class="bg-gray-50">
+    <!-- Role-application tracker (only when the user has applied for landlord/agent/PM) -->
+    <div v-if="primaryApplication" class="mb-4">
+      <UiRoleApplicationStatus :app="primaryApplication" />
+    </div>
+
     <!-- Welcome banner -->
-    <div class="mb-6 border-b border-gray-200 bg-white px-0 pb-6 pt-4">
+    <div class="mb-6 border-b border-gray-200 px-0 pb-6 pt-4">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p class="text-xs font-semibold uppercase tracking-wider text-primary-600">Your hub</p>
-          <h1 class="mt-1 text-2xl font-bold tracking-tight text-gray-900">
-            Welcome back, {{ auth.user?.fullName?.split(' ')[0] || 'there' }}
-          </h1>
+          <ClientOnly>
+            <h1 class="mt-1 text-2xl font-bold tracking-tight text-gray-900">
+              Welcome back, {{ auth.user?.fullName?.split(' ')[0] || 'there' }}
+            </h1>
+            <template #fallback>
+              <div class="mt-1 h-7 w-56 animate-pulse rounded bg-gray-200"></div>
+            </template>
+          </ClientOnly>
           <p class="mt-1 text-sm text-gray-500">
-            <span class="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium capitalize text-gray-600">{{ dashRoleLabel }}</span>
+            <ClientOnly>
+              <span class="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium capitalize text-gray-600">{{ dashRoleLabel }}</span>
+              <template #fallback>
+                <span class="inline-block h-4 w-12 animate-pulse rounded bg-gray-200 align-middle"></span>
+              </template>
+            </ClientOnly>
             <span class="ml-2">· {{ todayDate }}</span>
           </p>
         </div>
@@ -54,7 +69,12 @@
             <div :class="`flex h-9 w-9 items-center justify-center rounded ${stat.iconBg}`">
               <i :class="`${stat.icon} text-lg leading-none ${stat.iconColor}`"></i>
             </div>
-            <span class="rounded bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">{{ dashRoleLabel }}</span>
+            <ClientOnly>
+              <span class="rounded bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">{{ dashRoleLabel }}</span>
+              <template #fallback>
+                <span class="inline-block h-4 w-12 animate-pulse rounded bg-gray-200"></span>
+              </template>
+            </ClientOnly>
           </div>
           <p class="mt-3 text-2xl font-bold text-gray-900">{{ stat.value }}</p>
           <p class="mt-0.5 text-xs text-gray-500">{{ stat.label }}</p>
@@ -170,13 +190,15 @@
             >
               <i class="las la-compass mr-2 text-base"></i>Browse properties
             </NuxtLink>
-            <NuxtLink
-              v-if="auth.hasRole('tenant')"
-              to="/tenant/my-home"
-              class="flex w-full items-center rounded border border-primary-200 bg-primary-50 px-3 py-2.5 text-sm font-medium text-primary-700 transition hover:bg-primary-100"
-            >
-              <i class="las la-home mr-2 text-base"></i>My Home
-            </NuxtLink>
+            <ClientOnly>
+              <NuxtLink
+                v-if="auth.hasRole('tenant')"
+                to="/tenant/my-home"
+                class="flex w-full items-center rounded border border-primary-200 bg-primary-50 px-3 py-2.5 text-sm font-medium text-primary-700 transition hover:bg-primary-100"
+              >
+                <i class="las la-home mr-2 text-base"></i>My Home
+              </NuxtLink>
+            </ClientOnly>
             <NuxtLink
               to="/applications"
               class="flex w-full items-center rounded border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
@@ -245,6 +267,7 @@ const route = useRoute()
 const auth = useAuthStore()
 const dash = useDashboardStore()
 const notifications = useUserNotificationsStore()
+const { primary: primaryApplication, fetch: fetchRoleApplications, ensureRealtime: ensureApplicationsRealtime } = useRoleApplications()
 const { getNotificationDestination } = useNotificationDestination()
 
 /** True only for `/dashboard` — child paths like `/dashboard/site-pages` use `<NuxtPage />` above. */
@@ -451,8 +474,12 @@ onMounted(async () => {
   if (!auth.isReady) await auth.bootstrap()
   if (auth.isAuthenticated && !auth.roles.length) await auth.fetchRoles()
   try {
-    await dash.fetchSummary()
-    await notifications.fetchRecent(12)
+    await Promise.all([
+      dash.fetchSummary(),
+      notifications.fetchRecent(12),
+      fetchRoleApplications()
+    ])
+    ensureApplicationsRealtime(auth.user?._id)
   } catch { /* ignore */ }
 })
 </script>
