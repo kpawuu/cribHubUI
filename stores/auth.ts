@@ -74,7 +74,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function bootstrap() {
-    if (process.server) return
+    if (import.meta.server) return
     loadFromStorage()
 
     if (accessToken.value) {

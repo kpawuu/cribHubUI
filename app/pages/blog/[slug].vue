@@ -28,8 +28,8 @@ const { public: { siteUrl } } = useRuntimeConfig()
 const sitePages = useSitePagesStore()
 const { data: page, pending } = await useAsyncData(
   () => `blog-post-${slug.value}`,
-  () => import.meta.server ? Promise.resolve(null) : sitePages.fetchBySlug(slug.value),
-  { watch: [slug], server: false, lazy: true }
+  () => sitePages.fetchBySlug(slug.value),
+  { watch: [slug] }
 )
 
 const pageLive = computed(() => sitePages.detailBySlug[slug.value] ?? page.value ?? null)

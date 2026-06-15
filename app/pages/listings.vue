@@ -415,8 +415,13 @@ import { useSeo } from '../composables/useSeo'
 
 definePageMeta({ layout: 'default' })
 
+// IMPORTANT: resolve `useRoute()` once at setup time. Composables that rely on
+// the Nuxt instance MUST NOT be called inside a `computed` getter, because
+// `unhead` resolves head values lazily (sometimes outside the Vue setup
+// context) and would throw "called outside of a plugin / setup function".
+const route = useRoute()
+
 useSeo(computed(() => {
-  const route = useRoute()
   const location = String(route.query.location || '')
   const type = String(route.query.type || 'rent')
   const titleParts = ['Properties']
@@ -441,8 +446,6 @@ const properties = usePropertiesStore(pinia)
 const listingSidebar = useListingSidebarStore(pinia)
 const favorites = useFavoritesStore(pinia)
 const auth = useAuthStore(pinia)
-
-const route = useRoute()
 
 const qLocation = ref(String(route.query.location || ''))
 const qType = ref(String(route.query.type || 'rent'))
